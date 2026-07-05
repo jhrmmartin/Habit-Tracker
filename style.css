@@ -17,13 +17,16 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body { 
-    font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif; 
+    font-family: 'Outfit', sans-serif; /* Changed from Inter */
     background-color: var(--bg-color); 
     color: var(--text-main); 
     padding: 20px; 
     position: relative;
-    overflow-x: hidden; /* FIX: Prevents horizontal blowout on mobile */
+    overflow-x: hidden; 
 }
+
+h1 { font-weight: 700; }
+.panel-title { font-weight: 600; }
 
 /* --- AMBIENT BACKGROUND GLOWS --- */
 .ambient-glow {
