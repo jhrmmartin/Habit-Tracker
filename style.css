@@ -1,17 +1,17 @@
 /* --- CORE VARIABLES (Modern Glassmorphism Vibe) --- */
 :root {
-    --bg-color: #09090e; /* Deep midnight blue/black */
-    --panel-bg: rgba(22, 22, 28, 0.65); /* Frosted glass */
+    --bg-color: #09090e; 
+    --panel-bg: rgba(22, 22, 28, 0.65); 
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --border: rgba(255, 255, 255, 0.08);
     --track-bg: rgba(0, 0, 0, 0.4);
     
     /* Vibrant Gradients */
-    --accent-1: #6366f1; /* Indigo */
-    --accent-2: #ec4899; /* Pink */
+    --accent-1: #6366f1; 
+    --accent-2: #ec4899; 
     --gradient: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-    --glow: 0 0 12px rgba(168, 85, 247, 0.5); /* Soft purple neon glow */
+    --glow: 0 0 12px rgba(168, 85, 247, 0.5); 
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,6 +22,7 @@ body {
     color: var(--text-main); 
     padding: 20px; 
     position: relative;
+    overflow-x: hidden; /* FIX: Prevents horizontal blowout on mobile */
 }
 
 /* --- AMBIENT BACKGROUND GLOWS --- */
@@ -36,19 +37,38 @@ body {
 .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: var(--accent-1); }
 .glow-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: var(--accent-2); }
 
-.dashboard-container { display: grid; grid-template-columns: 1fr 360px; gap: 20px; max-width: 1600px; margin: auto; }
-.left-column, .right-column { display: flex; flex-direction: column; gap: 20px; }
+/* FIX: Strict Container Bounds */
+.dashboard-container { 
+    display: grid; 
+    grid-template-columns: 1fr 360px; 
+    gap: 20px; 
+    max-width: 1600px; 
+    width: 100%; /* Force respect of screen width */
+    margin: auto; 
+}
+
+/* FIX: min-width: 0 stops the table from stretching everything */
+.left-column, .right-column { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px; 
+    min-width: 0; 
+}
 
 /* --- CASCADING PAGE LOAD & FROSTED GLASS PANELS --- */
 .panel { 
     background: var(--panel-bg); 
-    backdrop-filter: blur(16px); /* Frosted glass blur effect */
+    backdrop-filter: blur(16px); 
     -webkit-backdrop-filter: blur(16px);
-    border-radius: 12px; /* Slightly softer corners */
+    border-radius: 12px; 
     padding: 18px; 
     border: 1px solid var(--border); 
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); /* Gives depth */
-    animation: fadeSlideUp 0.6s ease-out forwards; opacity: 0; transform: translateY(15px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); 
+    animation: fadeSlideUp 0.6s ease-out forwards; 
+    opacity: 0; 
+    transform: translateY(15px);
+    width: 100%; 
+    min-width: 0; /* FIX: Shrinks panel down to mobile size */
 }
 .panel-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 15px; text-align: center; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 
@@ -67,7 +87,7 @@ body {
     font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px; margin: 0;
     background: var(--gradient);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent; /* Makes the title text gradient */
+    -webkit-text-fill-color: transparent; 
 }
 .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
@@ -97,18 +117,18 @@ select, .btn {
 .analysis-table th { color: var(--text-muted); padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 .analysis-table td { padding: 8px 2px; border-bottom: 1px solid rgba(255, 255, 255, 0.02); transition: all 0.3s ease; }
 .analysis-table td.text-left { text-align: left; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-.analysis-table tr:hover td { background-color: rgba(255, 255, 255, 0.03); } /* Row highlight */
+.analysis-table tr:hover td { background-color: rgba(255, 255, 255, 0.03); } 
 
 .top-habits-list { list-style: none; font-size: 0.85rem; }
 .top-habits-list li { display: flex; gap: 15px; padding: 10px 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.02); transition: all 0.2s ease;}
-.top-habits-list li:hover { background-color: rgba(255, 255, 255, 0.03); padding-left: 8px; } /* Slide right on hover */
+.top-habits-list li:hover { background-color: rgba(255, 255, 255, 0.03); padding-left: 8px; } 
 .top-habits-list li span:first-child { color: var(--accent-1); width: 20px; text-align: right; font-weight: bold;}
 
 /* --- MAIN GRIDS --- */
 .grid-wrapper { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 15px; }
 table.tracker-grid { width: 100%; border-collapse: collapse; text-align: center; min-width: 900px; }
-table.tracker-grid th, table.tracker-grid td { padding: 10px 4px; border: 1px solid rgba(255, 255, 255, 0.03); transition: background-color 0.2s; } 
-table.tracker-grid tr:hover td { background-color: rgba(255, 255, 255, 0.015); } /* Subtle row highlight on calendar */
+table.tracker-grid th, table.tracker-grid td { padding: 10px 2px; min-width: 34px; border: 1px solid rgba(255, 255, 255, 0.03); transition: background-color 0.2s; } 
+table.tracker-grid tr:hover td { background-color: rgba(255, 255, 255, 0.015); } 
 
 table.tracker-grid th { background: rgba(10, 10, 15, 0.95); position: sticky; top: 0; z-index: 10; }
 .sticky-left { position: sticky; left: 0; background: rgba(15, 15, 20, 0.95); z-index: 20; padding: 0 15px !important; min-width: 220px; font-size: 0.85rem; border-right: 1px solid var(--border); backdrop-filter: blur(10px); }
@@ -152,7 +172,7 @@ input[type="checkbox"]:active { transform: scale(0.85); }
 input[type="checkbox"]:checked { 
     background: var(--gradient); 
     border-color: transparent; 
-    box-shadow: var(--glow); /* Adds the neon pop */
+    box-shadow: var(--glow); 
 }
 input[type="checkbox"]:checked::after { 
     content: ''; position: absolute; left: 6px; top: 2px; width: 4px; height: 9px; 
