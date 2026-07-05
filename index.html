@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalist Habit Tracker Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="left-column">
+            
+            <div class="panel header-controls">
+                <h1>Habit Tracker</h1>
+                <div class="toolbar">
+                    <select id="monthSelect"></select>
+                    <select id="yearSelect"></select>
+                    <button class="btn" onclick="exportCSV()">Export CSV</button>
+                    <button class="btn btn-danger" onclick="clearMonth()">Clear Month</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Daily Progress vs Wellness Overlay</div>
+                <div class="canvas-container">
+                    <canvas id="dailyMixedChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title" style="text-align: left;" id="gridTitle">My Habits</div>
+                
+                <div class="grid-wrapper">
+                    <table class="tracker-grid">
+                        <thead id="tableHeader"></thead>
+                        <tbody id="tableBody"></tbody>
+                        <tbody id="moodSleepBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="add-habit-container">
+                    <input type="text" id="newHabitInput" placeholder="Add a new habit... (e.g., Read 10 Pages 📚)">
+                    <button onclick="addNewHabit()">Add</button>
+                </div>
+                <div id="errorMessage" class="error-msg"></div>
+
+            </div>
+        </div>
+
+        <div class="right-column">
+            
+            <div class="panel">
+                <div class="panel-title">Overall Stats</div>
+                <div class="canvas-container" style="height: 140px;">
+                    <canvas id="overallDoughnutChart"></canvas>
+                </div>
+                <div class="stat-blocks">
+                    <div class="stat-box"><div class="stat-box-title">Goal</div><div class="stat-box-value" id="statGoal">0</div></div>
+                    <div class="stat-box"><div class="stat-box-title">Completed</div><div class="stat-box-value" id="statCompleted">0</div></div>
+                    <div class="stat-box"><div class="stat-box-title">Left</div><div class="stat-box-value" id="statLeft">0</div></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Analysis & Streaks</div>
+                <table class="analysis-table">
+                    <thead><tr>
+                        <th class="text-left">Habit</th>
+                        <th>Actual</th>
+                        <th>%</th>
+                        <th title="Current Streak">🔥</th>
+                        <th title="Best Streak">🏆</th>
+                    </tr></thead>
+                    <tbody id="analysisBody"></tbody>
+                </table>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">Top Habits</div>
+                <ul class="top-habits-list" id="topHabitsList"></ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
