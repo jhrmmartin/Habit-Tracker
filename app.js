@@ -1,4 +1,3 @@
-// --- ARCHITECTURE FIX: UUIDs ---
 const generateUUID = () => Math.random().toString(36).substr(2, 9);
 
 const defaultHabits = [
@@ -18,7 +17,6 @@ let currentYear, currentMonth, daysInMonth;
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const dayNamesShort = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-// --- INITIALIZATION ---
 window.onload = () => { 
     initCalendarSettings(); 
     initCharts(); 
@@ -30,7 +28,6 @@ window.onload = () => {
     updateDashboard(); 
 };
 
-// --- CORE LOGIC ---
 function getStorageKey() {
     return `habitData_${currentYear}_${currentMonth}`;
 }
@@ -41,7 +38,6 @@ function updateDashboard() {
     calculateStats(); 
 }
 
-// --- DATA MANAGEMENT ---
 function addNewHabit() {
     const input = document.getElementById('newHabitInput');
     const msg = document.getElementById('errorMessage');
@@ -132,7 +128,6 @@ function loadState() {
     });
 }
 
-// --- DOM RENDERERS ---
 function initCalendarSettings() {
     const date = new Date(); currentYear = date.getFullYear(); currentMonth = date.getMonth();
     const mSelect = document.getElementById('monthSelect'); const ySelect = document.getElementById('yearSelect');
@@ -155,7 +150,6 @@ function buildGrids() {
     
     header.innerHTML = ''; body.innerHTML = ''; msBody.innerHTML = ''; analysisBody.innerHTML = '';
 
-    // Header Construction
     let trWeeks = document.createElement('tr'); let thEmptyTop = document.createElement('th');
     thEmptyTop.className = 'sticky-left'; trWeeks.appendChild(thEmptyTop);
 
@@ -178,7 +172,6 @@ function buildGrids() {
     }
     header.appendChild(trDays);
 
-    // Habit Rows & Analysis Setup
     habits.forEach((habitObj, hIdx) => {
         let tr = document.createElement('tr'); let tdName = document.createElement('td'); tdName.className = 'sticky-left'; 
         tdName.innerHTML = `
@@ -213,9 +206,8 @@ function buildGrids() {
         analysisBody.appendChild(anaTr);
     });
 
-    // Wellness Overlay
-    let trWellnessTitle = document.createElement('tr'); trWellnessTitle.style.backgroundColor = '#111111';
-    trWellnessTitle.innerHTML = `<td class="sticky-left" style="background:#111; border-top:3px solid #333; border-bottom:1px solid #333;"><div class="habit-cell-content"><span style="color:var(--text-main); font-weight:700; letter-spacing:1px; font-size:0.75rem;">OVERALL WELLNESS</span></div></td><td colspan="${daysInMonth}" style="background:#111; border-top:3px solid #333; border-bottom:1px solid #333;"></td>`;
+    let trWellnessTitle = document.createElement('tr'); 
+    trWellnessTitle.innerHTML = `<td class="sticky-left" style="border-top:2px solid rgba(255,255,255,0.05);"><div class="habit-cell-content"><span style="color:var(--accent-1); font-weight:700; letter-spacing:1px; font-size:0.75rem;">OVERALL WELLNESS</span></div></td><td colspan="${daysInMonth}" style="border-top:2px solid rgba(255,255,255,0.05);"></td>`;
     msBody.appendChild(trWellnessTitle);
 
     ['Mood', 'Hours of Sleep'].forEach(metric => {
@@ -267,11 +259,11 @@ function calculateStats() {
         }
     });
 
-    document.getElementById('statGoal').innerText = totalGoal;
-    document.getElementById('statCompleted').innerText = totalCompleted;
-    document.getElementById('statLeft').innerText = totalGoal - totalCompleted;
+    // Animate the counters for a premium feel
+    animateValue("statGoal", parseInt(document.getElementById('statGoal').innerText) || 0, totalGoal, 500);
+    animateValue("statCompleted", parseInt(document.getElementById('statCompleted').innerText) || 0, totalCompleted, 500);
+    animateValue("statLeft", parseInt(document.getElementById('statLeft').innerText) || 0, totalGoal - totalCompleted, 500);
 
-    // Array to hold data for sorting the Top Habits leaderboard
     let habitStatsArray = [];
 
     habits.forEach(h => {
@@ -290,16 +282,9 @@ function calculateStats() {
         document.getElementById(`ana-curr-${h.id}`).innerText = currStreak;
         document.getElementById(`ana-best-${h.id}`).innerText = bestStreak;
 
-        // Push data to array for sorting
-        habitStatsArray.push({
-            name: h.name,
-            actual: actual,
-            streak: currStreak
-        });
+        habitStatsArray.push({ name: h.name, actual: actual, streak: currStreak });
     });
 
-    // --- LEADERBOARD LOGIC ---
-    // Sort habits descending by actual checks. Tie breaker is current streak.
     habitStatsArray.sort((a, b) => b.actual - a.actual || b.streak - a.streak);
 
     const topList = document.getElementById('topHabitsList');
@@ -310,7 +295,7 @@ function calculateStats() {
             li.innerHTML = `
                 <span>${i+1}</span> 
                 <span style="flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${stat.name}">${stat.name}</span>
-                <span style="color: var(--accent); font-weight: 600;">${stat.actual} <span style="font-weight: 400; color: var(--text-muted); font-size: 0.7rem;">/ ${daysInMonth}</span></span>
+                <span style="color: var(--accent-1); font-weight: 600;">${stat.actual} <span style="font-weight: 400; color: var(--text-muted); font-size: 0.7rem;">/ ${daysInMonth}</span></span>
             `; 
             topList.appendChild(li);
         });
@@ -333,33 +318,30 @@ function calculateStats() {
     mixedChart.update();
 
     overallChart.data.datasets[0].data = [totalCompleted, totalGoal - totalCompleted];
-    Chart.plugins.register({
-        beforeDraw: function(chart) {
-            if (chart.canvas.id === 'overallDoughnutChart') {
-                var width = chart.chart.width, height = chart.chart.height, ctx = chart.chart.ctx;
-                ctx.restore();
-                var fontSize = (height / 80).toFixed(2);
-                ctx.font = "bold " + fontSize + "em sans-serif";
-                ctx.fillStyle = "#ffffff";
-                ctx.textBaseline = "middle";
-                var text = Math.round((totalCompleted/totalGoal)*100) + "%", textX = Math.round((width - ctx.measureText(text).width) / 2), textY = height / 2;
-                ctx.fillText(text, textX, textY);
-                ctx.save();
-            }
-        }
-    });
     overallChart.update();
 }
 
+// Simple counter animation
+function animateValue(id, start, end, duration) {
+    if (start === end) return;
+    let range = end - start;
+    let current = start;
+    let increment = end > start ? 1 : -1;
+    let stepTime = Math.abs(Math.floor(duration / range));
+    let obj = document.getElementById(id);
+    let timer = setInterval(function() {
+        current += increment;
+        obj.innerHTML = current;
+        if (current == end) {
+            clearInterval(timer);
+        }
+    }, stepTime);
+}
+
 function exportCSV() {
-    // 1. ADD THE UTF-8 BOM (\uFEFF) so Excel reads special characters and emojis perfectly
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    
-    // 2. STRIP EMOJIS from the header names for a cleaner spreadsheet look
     let headerRow = ["Date", "Day", ...habits.map(h => {
-        return h.name.replace(/,/g, '') // remove commas to prevent CSV breakage
-                     .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '') // strip emojis
-                     .trim(); // remove extra spaces
+        return h.name.replace(/,/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim(); 
     }), "Mood", "Sleep"];
     
     csvContent += headerRow.join(",") + "\r\n";
@@ -368,11 +350,8 @@ function exportCSV() {
 
     for (let d = 1; d <= daysInMonth; d++) {
         let dateObj = new Date(currentYear, currentMonth, d);
-        
-        // 3. SHORTEN DATE FORMAT (e.g., "Jul-01") to prevent Excel's "########" width error
         let shortMonth = monthNames[currentMonth].substring(0, 3);
         let formattedDate = `${shortMonth}-${d.toString().padStart(2, '0')}`;
-        
         let row = [formattedDate, dayNamesShort[dateObj.getDay()]];
         
         habits.forEach(h => {
@@ -395,32 +374,39 @@ function exportCSV() {
     document.body.removeChild(link);
 }
 
-// --- FIX: CHART OVERLAP (ORDER PROPERTY ADDED) ---
 function initCharts() {
-    mixedChart = new Chart(document.getElementById('dailyMixedChart').getContext('2d'), {
+    let ctxDaily = document.getElementById('dailyMixedChart').getContext('2d');
+    
+    // Create a beautiful gradient for the bars
+    let gradientBar = ctxDaily.createLinearGradient(0, 0, 0, 300);
+    gradientBar.addColorStop(0, '#ec4899'); // Pink
+    gradientBar.addColorStop(1, '#6366f1'); // Indigo
+
+    mixedChart = new Chart(ctxDaily, {
         type: 'bar', 
         data: { 
             labels: [], 
             datasets: [
-                { type: 'bar', label: 'Tasks Done', data: [], backgroundColor: '#333333', hoverBackgroundColor: '#555555', borderRadius: 2, yAxisID: 'y', order: 3 },
-                { type: 'line', label: 'Mood', data: [], borderColor: '#ffffff', backgroundColor: '#ffffff', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 3, spanGaps: true, yAxisID: 'y1', order: 1 },
-                { type: 'line', label: 'Sleep', data: [], borderColor: '#888888', backgroundColor: '#888888', borderWidth: 2, borderDash: [5, 5], fill: false, tension: 0.3, pointRadius: 3, pointStyle: 'rect', spanGaps: true, yAxisID: 'y1', order: 2 }
+                { type: 'bar', label: 'Tasks Done', data: [], backgroundColor: gradientBar, borderRadius: 4, yAxisID: 'y', order: 3 },
+                { type: 'line', label: 'Mood', data: [], borderColor: '#ffffff', backgroundColor: '#ffffff', borderWidth: 2, fill: false, tension: 0.4, pointRadius: 3, spanGaps: true, yAxisID: 'y1', order: 1 },
+                { type: 'line', label: 'Sleep', data: [], borderColor: '#94a3b8', backgroundColor: '#94a3b8', borderWidth: 2, borderDash: [5, 5], fill: false, tension: 0.4, pointRadius: 3, pointStyle: 'rect', spanGaps: true, yAxisID: 'y1', order: 2 }
             ] 
         },
         options: { 
             responsive: true, maintainAspectRatio: false, 
             interaction: { mode: 'index', intersect: false },
             scales: { 
-                y: { type: 'linear', display: true, position: 'left', ticks: {color: '#737373'}, grid: {color: '#262626'} }, 
+                y: { type: 'linear', display: true, position: 'left', ticks: {color: '#94a3b8'}, grid: {color: 'rgba(255,255,255,0.05)'} }, 
                 y1: { type: 'linear', display: true, position: 'right', min: 0, max: 10, ticks: {color: '#ffffff'}, grid: {drawOnChartArea: false} },
-                x: { ticks: {color: '#737373'}, grid: {display: false} } 
+                x: { ticks: {color: '#94a3b8'}, grid: {display: false} } 
             }, 
-            plugins: { legend: { display: true, position: 'top', labels: {color: '#a0a0a0', usePointStyle: true, boxWidth: 8} } } 
+            plugins: { legend: { display: true, position: 'top', labels: {color: '#e2e8f0', usePointStyle: true, boxWidth: 8} } } 
         }
     });
 
-    overallChart = new Chart(document.getElementById('overallDoughnutChart').getContext('2d'), {
-        type: 'doughnut', data: { labels: ['Done', 'Left'], datasets: [{ data: [0, 1], backgroundColor: ['#fff', '#222'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '85%', plugins: { legend: { display: false }, tooltips: {enabled: false} } }
+    let ctxDoughnut = document.getElementById('overallDoughnutChart').getContext('2d');
+    overallChart = new Chart(ctxDoughnut, {
+        type: 'doughnut', data: { labels: ['Done', 'Left'], datasets: [{ data: [0, 1], backgroundColor: ['#6366f1', 'rgba(0,0,0,0.3)'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '80%', plugins: { legend: { display: false }, tooltips: {enabled: false} } }
     });
 }
