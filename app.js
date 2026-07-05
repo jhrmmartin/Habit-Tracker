@@ -259,7 +259,6 @@ function calculateStats() {
         }
     });
 
-    // Animate the counters for a premium feel
     animateValue("statGoal", parseInt(document.getElementById('statGoal').innerText) || 0, totalGoal, 500);
     animateValue("statCompleted", parseInt(document.getElementById('statCompleted').innerText) || 0, totalCompleted, 500);
     animateValue("statLeft", parseInt(document.getElementById('statLeft').innerText) || 0, totalGoal - totalCompleted, 500);
@@ -321,7 +320,6 @@ function calculateStats() {
     overallChart.update();
 }
 
-// Simple counter animation
 function animateValue(id, start, end, duration) {
     if (start === end) return;
     let range = end - start;
@@ -377,10 +375,9 @@ function exportCSV() {
 function initCharts() {
     let ctxDaily = document.getElementById('dailyMixedChart').getContext('2d');
     
-    // Create a beautiful gradient for the bars
     let gradientBar = ctxDaily.createLinearGradient(0, 0, 0, 300);
-    gradientBar.addColorStop(0, '#ec4899'); // Pink
-    gradientBar.addColorStop(1, '#6366f1'); // Indigo
+    gradientBar.addColorStop(0, '#ec4899'); 
+    gradientBar.addColorStop(1, '#6366f1'); 
 
     mixedChart = new Chart(ctxDaily, {
         type: 'bar', 
