@@ -227,8 +227,8 @@ window.onload = () => {
     document.getElementById('receiptModalOverlay')?.addEventListener('click', (e) => {
         if (e.target.id === 'receiptModalOverlay') closeReceiptModal();
     });
-    document.getElementById('onboardingModalOverlay')?.addEventListener('click', (e) => {
-        if (e.target.id === 'onboardingModalOverlay') closeOnboardingModal();
+    document.getElementById('interactiveTourOverlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'interactiveTourOverlay') exitInteractiveTour();
     });
     document.getElementById('dayNoteModalOverlay')?.addEventListener('click', (e) => {
         if (e.target.id === 'dayNoteModalOverlay') closeDayNoteModal();
@@ -246,14 +246,14 @@ window.onload = () => {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeReceiptModal();
-            closeOnboardingModal();
+            exitInteractiveTour();
             closeDayNoteModal();
             closeRenameJournalModal();
             closeCustomizeModal();
             closeHabitIconPicker();
-        } else if (document.getElementById('onboardingModalOverlay')?.classList.contains('active')) {
-            if (e.key === 'ArrowRight') nextOnboardingStep();
-            if (e.key === 'ArrowLeft') prevOnboardingStep();
+        } else if (isTourActive) {
+            if (e.key === 'ArrowRight') nextTourStep();
+            if (e.key === 'ArrowLeft') prevTourStep();
         }
     });
 
@@ -2041,96 +2041,519 @@ function updateGridJournalTableRow(day) {
 }
 
 // ============================================================
-// INTERACTIVE ONBOARDING TUTORIAL (Plays 1 time, with Skip & Auth)
+// INTERACTIVE ONBOARDING SPOTLIGHT TOUR (Live UI & Hands-on Tasks)
 // ============================================================
-let currentOnboardStep = 1;
-const totalOnboardSteps = 6;
+let isTourActive = false;
+let currentTourStepIndex = 0;
+let tourActiveElement = null;
+let tourStepListenerCleanups = [];
+let tourRepositionRaf = null;
+
+const INTERACTIVE_TOUR_STEPS = [
+    {
+        id: 'workspace_identity',
+        title: 'Notion Workspace Identity',
+        desc: 'Your habit tracker is built like a Notion page. You can customize your cover banner, page emoji, workspace title, and daily motivational quote.',
+        prompt: 'Tap the emoji icon ⚡ or click the title to personalize your tracker!',
+        actionLabel: '🎯 TRY IT NOW:',
+        targetSelector: () => document.getElementById('notionIdentityBar') || document.getElementById('notionPageIconBtn'),
+        beforeShow: () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+        setupListener: (onComplete) => {
+            const iconBtn = document.getElementById('notionPageIconBtn');
+            const titleEl = document.getElementById('notionWorkspaceTitle');
+            const handler = () => onComplete('✨ Workspace identity personalized!');
+            if (iconBtn) iconBtn.addEventListener('click', handler, { once: true });
+            if (titleEl) {
+                titleEl.addEventListener('focus', handler, { once: true });
+                titleEl.addEventListener('input', handler, { once: true });
+            }
+            return () => {
+                if (iconBtn) iconBtn.removeEventListener('click', handler);
+                if (titleEl) {
+                    titleEl.removeEventListener('focus', handler);
+                    titleEl.removeEventListener('input', handler);
+                }
+            };
+        }
+    },
+    {
+        id: 'view_modes',
+        title: 'Dual Focus: Grid vs Today',
+        desc: 'Switch anytime between the full 31-day Month Grid and the distraction-free Today Focus list (designed for smartphones and quick 10-second check-ins).',
+        prompt: 'Click "Today" (or "Grid") to switch the view mode now!',
+        actionLabel: '🎯 TRY IT NOW:',
+        targetSelector: () => document.querySelector('.view-mode-toggle'),
+        setupListener: (onComplete) => {
+            const todayBtn = document.getElementById('viewTodayBtn');
+            const gridBtn = document.getElementById('viewGridBtn');
+            const handler = () => onComplete('⚡ View mode toggled! Everything stays synchronized.');
+            if (todayBtn) todayBtn.addEventListener('click', handler, { once: true });
+            if (gridBtn) gridBtn.addEventListener('click', handler, { once: true });
+            return () => {
+                if (todayBtn) todayBtn.removeEventListener('click', handler);
+                if (gridBtn) gridBtn.removeEventListener('click', handler);
+            };
+        }
+    },
+    {
+        id: 'habit_tracking',
+        title: '1-Tap Daily Habit Tracking',
+        desc: 'Tracking consistency is effortless. Every checkmark immediately increments your active streak, calculates monthly completion rate, and updates your charts.',
+        prompt: 'Tap a habit checkbox (or today\'s calendar cell) to check off a habit!',
+        actionLabel: '🎯 TRY IT NOW:',
+        beforeShow: () => {
+            const el = document.querySelector('.today-habit-card') || document.querySelector('.tracker-grid tbody tr:first-child');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+        targetSelector: () => {
+            if (currentViewMode === 'today') {
+                return document.querySelector('.today-habit-card .today-checkbox') || document.querySelector('.today-habit-card');
+            }
+            return document.querySelector('.tracker-grid tbody tr:first-child td.day-cell.today-col') || document.querySelector('.tracker-grid tbody tr:first-child');
+        },
+        setupListener: (onComplete) => {
+            const handler = (e) => {
+                if (e.target.matches('input[type="checkbox"], .day-cell, .today-checkbox, .today-habit-card, .today-checkbox-wrap')) {
+                    onComplete('🔥 Streak logged! Your momentum is growing.');
+                    fireTourConfetti();
+                }
+            };
+            document.addEventListener('click', handler, true);
+            return () => document.removeEventListener('click', handler, true);
+        }
+    },
+    {
+        id: 'wellness_tracking',
+        title: 'Wellness: Mood & Sleep Logging',
+        desc: 'Track how your nightly rest and daily mood directly influence your discipline. The correlation algorithm charts your sweet spot for optimal momentum.',
+        prompt: 'Select your mood rating (1–10) or hours of sleep.',
+        actionLabel: '🎯 TRY IT NOW:',
+        beforeShow: () => {
+            const target = currentViewMode === 'today'
+                ? document.querySelector('.today-wellness-card')
+                : (document.getElementById('moodSleepBody') || document.getElementById('chartPanel'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+        targetSelector: () => {
+            if (currentViewMode === 'today') {
+                return document.querySelector('.today-wellness-card') || document.getElementById('todayMoodSelect');
+            }
+            return document.getElementById('moodSleepBody') || document.getElementById('chartPanel');
+        },
+        setupListener: (onComplete) => {
+            const moodSelect = document.getElementById('todayMoodSelect');
+            const sleepSelect = document.getElementById('todaySleepSelect');
+            const handler = () => onComplete('📈 Wellness logged! Feeds your discipline correlation data.');
+            if (moodSelect) moodSelect.addEventListener('change', handler, { once: true });
+            if (sleepSelect) sleepSelect.addEventListener('change', handler, { once: true });
+            const gridBody = document.getElementById('moodSleepBody');
+            if (gridBody) gridBody.addEventListener('change', handler, { once: true });
+            return () => {
+                if (moodSelect) moodSelect.removeEventListener('change', handler);
+                if (sleepSelect) sleepSelect.removeEventListener('change', handler);
+                if (gridBody) gridBody.removeEventListener('change', handler);
+            };
+        }
+    },
+    {
+        id: 'micro_journal',
+        title: 'Micro-Journal & Custom Tags',
+        desc: 'Capture daily reflections, gratitudes, and wins in 60 seconds without blank-page writer\'s block. Tags allow instant categorized journaling.',
+        prompt: 'Click "+ 🏆 Daily Win" (or any tag) to stamp a quick reflection into your notes!',
+        actionLabel: '🎯 TRY IT NOW:',
+        beforeShow: () => {
+            const jEl = currentViewMode === 'today'
+                ? document.getElementById('todayJournalCard')
+                : document.getElementById('gridJournalPanel');
+            if (jEl) jEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+        targetSelector: () => {
+            if (currentViewMode === 'today') {
+                return document.getElementById('todayJournalPills') || document.getElementById('todayJournalCard');
+            }
+            return document.getElementById('gridJournalPills') || document.getElementById('gridJournalPanel');
+        },
+        setupListener: (onComplete) => {
+            const handler = (e) => {
+                if (e.target.closest('.prompt-pill') || e.target.id === 'todayJournalInput' || e.target.id === 'gridJournalInput') {
+                    onComplete('📝 Reflection tagged! Auto-saves locally & to cloud.');
+                }
+            };
+            document.addEventListener('click', handler, true);
+            const tArea = document.getElementById('todayJournalInput') || document.getElementById('gridJournalInput');
+            const onInput = () => onComplete('📝 Reflection logged!');
+            if (tArea) tArea.addEventListener('input', onInput, { once: true });
+            return () => {
+                document.removeEventListener('click', handler, true);
+                if (tArea) tArea.removeEventListener('input', onInput);
+            };
+        }
+    },
+    {
+        id: 'notion_aesthetics',
+        title: 'Covers, Wallpaper & Themes',
+        desc: 'Personalize your tracker with beautiful Notion-style cover banners, subtle wallpaper patterns, custom typography, or 6 curated color themes.',
+        prompt: 'Click the "Customize" button in the toolbar to explore options!',
+        actionLabel: '🎯 TRY IT NOW:',
+        beforeShow: () => {
+            const btn = document.querySelector('.toolbar button[onclick*="openCustomizeModal"]');
+            if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+        targetSelector: () => document.querySelector('.toolbar button[onclick*="openCustomizeModal"]'),
+        setupListener: (onComplete) => {
+            const btn = document.querySelector('.toolbar button[onclick*="openCustomizeModal"]');
+            const handler = () => onComplete('🎨 Customizer opened! Make the UI your own.');
+            if (btn) btn.addEventListener('click', handler, { once: true });
+            return () => {
+                if (btn) btn.removeEventListener('click', handler);
+            };
+        }
+    },
+    {
+        id: 'receipt_and_sync',
+        title: 'Discipline Receipt & Cloud Sync',
+        desc: 'Generate a vintage monospace discipline receipt of your monthly stats to share, and sign in to keep all your devices in perfect real-time sync!',
+        prompt: 'Click "Receipt" to see your monthly summary, or tap "Finish Tour 🎉" to begin!',
+        actionLabel: '🎯 TRY IT NOW:',
+        beforeShow: () => {
+            const btn = document.querySelector('.btn-receipt');
+            if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+        targetSelector: () => document.querySelector('.btn-receipt'),
+        setupListener: (onComplete) => {
+            const btn = document.querySelector('.btn-receipt');
+            const handler = () => {
+                onComplete('🏆 Receipt opened! You are all set.');
+                fireTourConfetti();
+            };
+            if (btn) btn.addEventListener('click', handler, { once: true });
+            return () => {
+                if (btn) btn.removeEventListener('click', handler);
+            };
+        }
+    }
+];
 
 function initOnboarding() {
     const onboarded = localStorage.getItem('habitTracker_onboarded');
     if (!onboarded) {
         setTimeout(() => {
-            openOnboardingModal(false);
-        }, 500);
+            startInteractiveTour(0);
+        }, 700);
     }
 }
 
-function openOnboardingModal(isManual = false) {
-    currentOnboardStep = 1;
-    showOnboardingStep(1);
-    const modal = document.getElementById('onboardingModalOverlay');
-    if (modal) modal.classList.add('active');
+function startInteractiveTour(startIndex = 0) {
+    // Close any other modal dialogs before launching the tour
+    closeReceiptModal();
+    closeDayNoteModal();
+    closeRenameJournalModal();
+    closeCustomizeModal();
+    closeHabitIconPicker();
+
+    isTourActive = true;
+    currentTourStepIndex = Math.max(0, Math.min(INTERACTIVE_TOUR_STEPS.length - 1, startIndex));
+
+    const overlay = document.getElementById('interactiveTourOverlay');
+    if (overlay) {
+        overlay.classList.remove('hidden');
+    }
+
+    renderTourStep(currentTourStepIndex);
+
+    window.addEventListener('resize', onTourReposition);
+    window.addEventListener('scroll', onTourReposition, { passive: true });
 }
 
-function closeOnboardingModal() {
-    const modal = document.getElementById('onboardingModalOverlay');
-    if (modal) modal.classList.remove('active');
+function exitInteractiveTour() {
+    isTourActive = false;
+    cleanupCurrentTourStepListeners();
+    setTourActiveElement(null);
+
+    const overlay = document.getElementById('interactiveTourOverlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
+
+    const outline = document.getElementById('tourTargetOutline');
+    if (outline) outline.style.display = 'none';
+
+    window.removeEventListener('resize', onTourReposition);
+    window.removeEventListener('scroll', onTourReposition);
+
     localStorage.setItem('habitTracker_onboarded', 'true');
 }
 
-function skipOnboarding() {
-    closeOnboardingModal();
-}
-
-function nextOnboardingStep() {
-    if (currentOnboardStep < totalOnboardSteps) {
-        showOnboardingStep(currentOnboardStep + 1);
+function nextTourStep() {
+    if (currentTourStepIndex < INTERACTIVE_TOUR_STEPS.length - 1) {
+        currentTourStepIndex++;
+        renderTourStep(currentTourStepIndex);
     } else {
-        closeOnboardingModal();
+        fireTourConfetti();
+        markTourActionCompleted('🏆 Tour Complete! Ready to crush your habits.');
+        setTimeout(() => {
+            exitInteractiveTour();
+        }, 1200);
     }
 }
 
-function prevOnboardingStep() {
-    if (currentOnboardStep > 1) {
-        showOnboardingStep(currentOnboardStep - 1);
+function prevTourStep() {
+    if (currentTourStepIndex > 0) {
+        currentTourStepIndex--;
+        renderTourStep(currentTourStepIndex);
     }
 }
 
-function jumpToOnboardingStep(step) {
-    showOnboardingStep(step);
-}
+function renderTourStep(index) {
+    cleanupCurrentTourStepListeners();
 
-function showOnboardingStep(step) {
-    currentOnboardStep = Math.max(1, Math.min(totalOnboardSteps, step));
+    const step = INTERACTIVE_TOUR_STEPS[index];
+    if (!step) return;
 
-    const badge = document.getElementById('onboardingStepBadge');
-    if (badge) badge.textContent = `Feature ${currentOnboardStep} of ${totalOnboardSteps}`;
-
-    for (let i = 1; i <= totalOnboardSteps; i++) {
-        const slide = document.getElementById(`onboardSlide${i}`);
-        const dot = document.getElementById(`onboardDot${i}`);
-        const tab = document.getElementById(`onboardTab${i}`);
-
-        if (slide) slide.classList.toggle('hidden', i !== currentOnboardStep);
-        if (dot) dot.classList.toggle('active', i === currentOnboardStep);
-        if (tab) {
-            const isActive = (i === currentOnboardStep);
-            tab.classList.toggle('active', isActive);
-            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            if (isActive) {
-                tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            }
-        }
+    if (typeof step.beforeShow === 'function') {
+        step.beforeShow();
     }
 
-    const prevBtn = document.getElementById('onboardPrevBtn');
-    const nextBtn = document.getElementById('onboardNextBtn');
+    // Update Card UI
+    const badgeEl = document.getElementById('tourStepBadge');
+    if (badgeEl) badgeEl.textContent = `Step ${index + 1} of ${INTERACTIVE_TOUR_STEPS.length}`;
 
+    const progressBar = document.getElementById('tourProgressBar');
+    if (progressBar) {
+        const pct = Math.round(((index + 1) / INTERACTIVE_TOUR_STEPS.length) * 100);
+        progressBar.style.width = `${pct}%`;
+    }
+
+    const titleEl = document.getElementById('tourStepTitle');
+    if (titleEl) titleEl.textContent = step.title;
+
+    const descEl = document.getElementById('tourStepDesc');
+    if (descEl) descEl.textContent = step.desc;
+
+    const actionBox = document.getElementById('tourActionBox');
+    if (actionBox) actionBox.classList.remove('completed');
+
+    const actionLabel = document.getElementById('tourActionLabel');
+    if (actionLabel) actionLabel.textContent = step.actionLabel || '🎯 TRY IT NOW:';
+
+    const actionStatus = document.getElementById('tourActionStatus');
+    if (actionStatus) actionStatus.textContent = 'Waiting for action...';
+
+    const actionPrompt = document.getElementById('tourActionPrompt');
+    if (actionPrompt) actionPrompt.textContent = step.prompt;
+
+    const prevBtn = document.getElementById('tourPrevBtn');
     if (prevBtn) {
-        prevBtn.classList.toggle('hidden', currentOnboardStep === 1);
+        prevBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
     }
 
+    const nextBtn = document.getElementById('tourNextBtn');
     if (nextBtn) {
-        if (currentOnboardStep === totalOnboardSteps) {
-            nextBtn.textContent = 'Get Started ✦';
-        } else {
-            nextBtn.textContent = 'Next Feature →';
+        nextBtn.classList.remove('tour-next-pulse');
+        nextBtn.textContent = (index === INTERACTIVE_TOUR_STEPS.length - 1) ? 'Finish Tour 🎉' : 'Next Step →';
+    }
+
+    // Attach step listener
+    if (typeof step.setupListener === 'function') {
+        const cleanup = step.setupListener((completedMsg) => {
+            markTourActionCompleted(completedMsg);
+        });
+        if (typeof cleanup === 'function') {
+            tourStepListenerCleanups.push(cleanup);
         }
     }
+
+    // Spotlight repositioning
+    setTimeout(() => {
+        const targetEl = getStepTarget(step);
+        setTourActiveElement(targetEl);
+        positionTourSpotlight(targetEl);
+    }, 120);
+}
+
+function getStepTarget(step) {
+    if (!step) return null;
+    if (typeof step.targetSelector === 'function') {
+        return step.targetSelector();
+    }
+    if (typeof step.targetSelector === 'string') {
+        return document.querySelector(step.targetSelector);
+    }
+    return null;
+}
+
+function setTourActiveElement(el) {
+    if (tourActiveElement) {
+        tourActiveElement.classList.remove('tour-active-element');
+    }
+    tourActiveElement = el;
+    if (tourActiveElement) {
+        tourActiveElement.classList.add('tour-active-element');
+    }
+}
+
+function cleanupCurrentTourStepListeners() {
+    while (tourStepListenerCleanups.length > 0) {
+        const cleanup = tourStepListenerCleanups.pop();
+        try { cleanup(); } catch (err) { /* ignore */ }
+    }
+}
+
+function markTourActionCompleted(completedText) {
+    const actionBox = document.getElementById('tourActionBox');
+    const statusEl = document.getElementById('tourActionStatus');
+    const promptEl = document.getElementById('tourActionPrompt');
+    const nextBtn = document.getElementById('tourNextBtn');
+
+    if (actionBox) actionBox.classList.add('completed');
+    if (statusEl) statusEl.textContent = '✓ Done!';
+    if (promptEl && completedText) promptEl.textContent = completedText;
+    if (nextBtn) nextBtn.classList.add('tour-next-pulse');
+}
+
+function positionTourSpotlight(targetEl) {
+    const cutout = document.getElementById('tourMaskCutout');
+    const outline = document.getElementById('tourTargetOutline');
+    const card = document.getElementById('tourCard');
+
+    if (!targetEl) {
+        if (cutout) {
+            cutout.setAttribute('width', '0');
+            cutout.setAttribute('height', '0');
+        }
+        if (outline) outline.style.display = 'none';
+        return;
+    }
+
+    const rect = targetEl.getBoundingClientRect();
+    const pad = 8;
+    const x = Math.max(0, rect.left - pad);
+    const y = Math.max(0, rect.top - pad);
+    const w = Math.min(window.innerWidth - x, rect.width + (pad * 2));
+    const h = rect.height + (pad * 2);
+
+    if (cutout) {
+        cutout.setAttribute('x', x);
+        cutout.setAttribute('y', y);
+        cutout.setAttribute('width', Math.max(0, w));
+        cutout.setAttribute('height', Math.max(0, h));
+    }
+
+    if (outline) {
+        outline.style.left = `${x}px`;
+        outline.style.top = `${y}px`;
+        outline.style.width = `${Math.max(0, w)}px`;
+        outline.style.height = `${Math.max(0, h)}px`;
+        outline.style.display = 'block';
+    }
+
+    if (card) {
+        const isMobile = window.innerWidth <= 680;
+        if (isMobile) {
+            return;
+        }
+
+        const cardRect = card.getBoundingClientRect();
+        const cardH = cardRect.height || 260;
+        const cardW = cardRect.width || 410;
+
+        let top = rect.bottom + 16;
+        if (top + cardH > window.innerHeight - 20) {
+            top = Math.max(20, rect.top - cardH - 16);
+        }
+
+        let left = rect.left;
+        if (left + cardW > window.innerWidth - 20) {
+            left = window.innerWidth - cardW - 20;
+        }
+        if (left < 20) left = 20;
+
+        card.style.top = `${top}px`;
+        card.style.left = `${left}px`;
+    }
+}
+
+function onTourReposition() {
+    if (tourRepositionRaf) cancelAnimationFrame(tourRepositionRaf);
+    tourRepositionRaf = requestAnimationFrame(() => {
+        if (!isTourActive) return;
+        const step = INTERACTIVE_TOUR_STEPS[currentTourStepIndex];
+        if (step) {
+            const targetEl = getStepTarget(step);
+            positionTourSpotlight(targetEl);
+        }
+    });
+}
+
+// Celebration Confetti Cannon
+function fireTourConfetti() {
+    const canvas = document.getElementById('tourConfettiCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.display = 'block';
+
+    const colors = ['#2383e2', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#e2e8f0'];
+    const particleCount = 100;
+    const particles = [];
+
+    for (let i = 0; i < particleCount; i++) {
+        particles.push({
+            x: window.innerWidth * 0.5 + (Math.random() - 0.5) * 180,
+            y: window.innerHeight * 0.45,
+            w: Math.random() * 8 + 4,
+            h: Math.random() * 6 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() * -12) - 4,
+            rotation: Math.random() * 360,
+            rotSpeed: (Math.random() - 0.5) * 10,
+            opacity: 1,
+            gravity: 0.35,
+            drag: 0.98
+        });
+    }
+
+    let animId;
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += p.gravity;
+            p.vx *= p.drag;
+            p.rotation += p.rotSpeed;
+            p.opacity -= 0.009;
+
+            if (p.opacity > 0) {
+                alive = true;
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.globalAlpha = Math.max(0, p.opacity);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            }
+        });
+
+        if (alive) {
+            animId = requestAnimationFrame(render);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.style.display = 'none';
+            cancelAnimationFrame(animId);
+        }
+    }
+    render();
 }
 
 function onboardOpenAuth() {
-    closeOnboardingModal();
+    exitInteractiveTour();
     const authBtn = document.getElementById('authOpenBtn');
     if (authBtn) {
         authBtn.click();
@@ -2140,13 +2563,16 @@ function onboardOpenAuth() {
 }
 
 // Global window assignments for onclick event attributes
-window.openOnboardingModal = openOnboardingModal;
-window.closeOnboardingModal = closeOnboardingModal;
-window.skipOnboarding = skipOnboarding;
-window.nextOnboardingStep = nextOnboardingStep;
-window.prevOnboardingStep = prevOnboardingStep;
-window.jumpToOnboardingStep = jumpToOnboardingStep;
+window.startInteractiveTour = startInteractiveTour;
+window.exitInteractiveTour = exitInteractiveTour;
+window.nextTourStep = nextTourStep;
+window.prevTourStep = prevTourStep;
 window.onboardOpenAuth = onboardOpenAuth;
+window.openOnboardingModal = () => startInteractiveTour(0);
+window.closeOnboardingModal = exitInteractiveTour;
+window.skipOnboarding = exitInteractiveTour;
+window.nextOnboardingStep = nextTourStep;
+window.prevOnboardingStep = prevTourStep;
 window.openDayNoteModal = openDayNoteModal;
 window.closeDayNoteModal = closeDayNoteModal;
 window.saveDayNoteFromModal = saveDayNoteFromModal;
