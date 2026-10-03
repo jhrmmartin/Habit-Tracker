@@ -1864,6 +1864,114 @@ select.mood-sleep-select option {
     gap: 14px;
 }
 
+/* Grid Journal Section & Controls */
+.grid-journal-day-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.grid-journal-day-heading {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+}
+
+.grid-journal-history-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.grid-journal-history-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+.grid-journal-history-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.grid-journal-chip {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    padding: 3px 9px;
+    font-size: 0.6875rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all var(--duration-micro) var(--ease-snappy);
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.grid-journal-chip.active {
+    border-color: var(--accent-border);
+    color: var(--text-primary);
+    background: var(--accent-subtle);
+}
+
+.grid-journal-chip:hover {
+    border-color: var(--accent-border);
+    color: var(--text-primary);
+}
+
+.grid-journal-chip-day {
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.grid-journal-chip-snippet {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.85;
+}
+
+/* Reflection row in Monthly Grid Table */
+.grid-note-cell-btn {
+    width: 24px;
+    height: 24px;
+    margin: 0 auto;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px dashed var(--border-subtle);
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+    cursor: pointer;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.grid-note-cell-btn:hover {
+    border-color: var(--accent-border);
+    color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+.grid-note-cell-btn.has-note {
+    border-style: solid;
+    border-color: var(--accent-border);
+    background: var(--accent-subtle);
+    color: var(--accent);
+    font-weight: 600;
+}
+
 /* ============================================================
    ONBOARDING TUTORIAL MODAL
    ============================================================ */

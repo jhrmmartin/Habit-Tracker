@@ -425,6 +425,54 @@
                 <div id="errorMessage" class="error-msg" role="alert"></div>
             </section>
 
+            <!-- Monthly Grid Journal Panel (Visible in Month Grid View) -->
+            <section class="panel" id="gridJournalPanel">
+                <div class="panel-header" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <div class="today-journal-title-wrap">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        <span class="editable-journal-title" id="gridJournalCardTitle" onclick="openRenameJournalModal()" title="Click to rename what kind of journal this is">Daily Reflection &amp; Win</span>
+                        <button type="button" class="icon-btn edit-journal-title-btn" onclick="openRenameJournalModal()" title="Rename journal type" aria-label="Rename journal type">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Day Selector for Grid Journal -->
+                    <div class="grid-journal-day-nav" role="navigation" aria-label="Day reflection navigator">
+                        <button class="icon-btn" onclick="navigateGridJournalDay(-1)" title="Previous Day" aria-label="Previous Day">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
+                        <select id="gridJournalDaySelect" class="control-select" style="font-size:0.75rem; padding: 4px 8px; min-width: 140px;" aria-label="Select day to reflect on">
+                        </select>
+                        <button class="icon-btn" onclick="navigateGridJournalDay(1)" title="Next Day" aria-label="Next Day">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                        <button class="btn btn-ghost" style="padding: 3px 8px; font-size: 0.6875rem;" onclick="jumpGridJournalToToday()">Today</button>
+                    </div>
+                </div>
+
+                <!-- Active Day Banner & Auto-saved text -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                    <span class="grid-journal-day-heading" id="gridJournalDayHeading">Today's Reflection</span>
+                    <span class="journal-status-text" id="gridJournalSavedHint">Auto-saved</span>
+                </div>
+
+                <!-- Custom Prompt Pills -->
+                <div class="journal-prompt-pills" id="gridJournalPills" role="toolbar" aria-label="Reflection prompt pills"></div>
+
+                <!-- Textarea -->
+                <textarea id="gridJournalInput" class="today-journal-textarea" rows="4"
+                    placeholder="Write your reflection, thoughts, or wins for this day… (Auto-saves locally &amp; to cloud)"
+                    aria-label="Daily reflection notes"></textarea>
+
+                <!-- Monthly Reflections Log / Chips (Quick Jump) -->
+                <div class="grid-journal-history-wrap">
+                    <span class="grid-journal-history-label">LOGGED THIS MONTH:</span>
+                    <div class="grid-journal-history-chips" id="gridJournalHistoryChips">
+                        <!-- Chips showing days with logged reflections -->
+                    </div>
+                </div>
+            </section>
+
             <!-- Zen / Today Focus View -->
             <section class="panel today-focus-section hidden" id="todayPanel">
                 <div class="today-banner">

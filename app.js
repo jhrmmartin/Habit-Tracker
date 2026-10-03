@@ -264,10 +264,13 @@ function setViewMode(mode) {
 
     document.getElementById('chartPanel')?.classList.toggle('hidden', isToday);
     document.getElementById('gridPanel')?.classList.toggle('hidden', isToday);
+    document.getElementById('gridJournalPanel')?.classList.toggle('hidden', isToday);
     document.getElementById('todayPanel')?.classList.toggle('hidden', !isToday);
 
     if (isToday) {
         renderTodayFocus();
+    } else {
+        renderGridJournal();
     }
 }
 
@@ -457,6 +460,8 @@ function updateDashboard() {
     calculateStats();
     if (currentViewMode === 'today') {
         renderTodayFocus();
+    } else {
+        renderGridJournal();
     }
 }
 
@@ -790,6 +795,33 @@ function buildGrids() {
         }
         msBody.appendChild(tr);
     });
+
+    // ── Daily Reflection Row in Grid ──
+    const trReflect = document.createElement('tr');
+    const tdReflectName = document.createElement('td');
+    tdReflectName.className = 'sticky-left';
+    tdReflectName.innerHTML = `<span class="habit-name" style="color:var(--accent); font-size:0.75rem; font-weight:600;">Daily Note</span>`;
+    trReflect.appendChild(tdReflectName);
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const td = document.createElement('td');
+        if (d === todayDay) td.classList.add('today-col');
+
+        const hasNote = Boolean(currentMonthJournal[d] && currentMonthJournal[d].trim());
+        const notePreview = hasNote ? currentMonthJournal[d].substring(0, 80) : '';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `grid-note-cell-btn ${hasNote ? 'has-note' : ''}`;
+        btn.dataset.day = d;
+        btn.innerHTML = hasNote ? '📝' : '+';
+        btn.title = hasNote ? `Day ${d}: ${sanitizeHTML(notePreview)}` : `Log reflection for Day ${d}`;
+        btn.onclick = () => focusGridJournalDay(d);
+
+        td.appendChild(btn);
+        trReflect.appendChild(td);
+    }
+    msBody.appendChild(trReflect);
 }
 
 // ============================================================
@@ -1492,6 +1524,8 @@ function initJournal() {
 function updateJournalTitleUI() {
     const el = document.getElementById('journalCardTitle');
     if (el) el.textContent = journalTitle;
+    const gridEl = document.getElementById('gridJournalCardTitle');
+    if (gridEl) gridEl.textContent = journalTitle;
 }
 
 function openRenameJournalModal() {
@@ -1526,6 +1560,7 @@ function saveJournalTitle() {
 
 function renderAllJournalPills() {
     renderJournalPillsContainer('todayJournalPills', 'todayJournalInput');
+    renderJournalPillsContainer('gridJournalPills', 'gridJournalInput');
     renderJournalPillsContainer('modalJournalPromptPills', 'dayNoteModalInput');
 }
 
@@ -1692,6 +1727,9 @@ function saveJournalNote(day, text) {
     }
     saveState();
     updateJournalIndicators();
+    updateGridJournalTableRow(day);
+    populateGridJournalDaySelect();
+    renderGridJournalHistoryChips();
 }
 
 function insertJournalPrompt(prompt, targetInputId = 'todayJournalInput') {
@@ -1713,6 +1751,9 @@ function insertJournalPrompt(prompt, targetInputId = 'todayJournalInput') {
         const activeDay = isCurrentMonth ? today.getDate() : 1;
         saveJournalNote(activeDay, journalInput.value);
         showJournalSavedHint();
+    } else if (targetInputId === 'gridJournalInput') {
+        saveJournalNote(gridJournalActiveDay, journalInput.value);
+        showGridJournalSavedHint();
     }
 }
 
@@ -1767,9 +1808,188 @@ function saveDayNoteFromModal() {
         saveJournalNote(modalActiveDay, input.value);
         if (currentViewMode === 'today') {
             renderTodayFocus();
+        } else {
+            renderGridJournal();
         }
     }
     closeDayNoteModal();
+}
+
+// ============================================================
+// GRID VIEW JOURNAL CONTROLS (Always visible in Month Grid)
+// ============================================================
+let gridJournalActiveDay = 1;
+
+function initGridJournalActiveDay() {
+    const today = new Date();
+    const isThisMonth = (today.getFullYear() === currentYear && today.getMonth() === currentMonth);
+    gridJournalActiveDay = isThisMonth ? today.getDate() : 1;
+}
+
+function renderGridJournal() {
+    if (!gridJournalActiveDay || gridJournalActiveDay > daysInMonth) {
+        initGridJournalActiveDay();
+    }
+
+    updateJournalTitleUI();
+    populateGridJournalDaySelect();
+    updateGridJournalDayHeading();
+    renderJournalPillsContainer('gridJournalPills', 'gridJournalInput');
+
+    const input = document.getElementById('gridJournalInput');
+    if (input) {
+        input.value = currentMonthJournal[gridJournalActiveDay] || '';
+        input.oninput = () => {
+            if (_journalDebounceTimer) clearTimeout(_journalDebounceTimer);
+            _journalDebounceTimer = setTimeout(() => {
+                saveJournalNote(gridJournalActiveDay, input.value);
+                showGridJournalSavedHint();
+
+                // If editing today, sync with Today view input too
+                const today = new Date();
+                const isCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
+                if (isCurrentMonth && gridJournalActiveDay === today.getDate()) {
+                    const todayInput = document.getElementById('todayJournalInput');
+                    if (todayInput && todayInput.value !== input.value) {
+                        todayInput.value = input.value;
+                    }
+                }
+            }, 350);
+        };
+    }
+
+    renderGridJournalHistoryChips();
+}
+
+function updateGridJournalDayHeading() {
+    const headingEl = document.getElementById('gridJournalDayHeading');
+    if (!headingEl) return;
+
+    const today = new Date();
+    const isThisMonth = (today.getFullYear() === currentYear && today.getMonth() === currentMonth);
+    const isToday = isThisMonth && (today.getDate() === gridJournalActiveDay);
+
+    const dateObj = new Date(currentYear, currentMonth, gridJournalActiveDay);
+    const dayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dateObj.getDay()];
+    headingEl.textContent = `${isToday ? 'Today · ' : ''}${dayName}, ${monthNames[currentMonth]} ${gridJournalActiveDay}`;
+}
+
+function populateGridJournalDaySelect() {
+    const select = document.getElementById('gridJournalDaySelect');
+    if (!select) return;
+
+    const today = new Date();
+    const isThisMonth = (today.getFullYear() === currentYear && today.getMonth() === currentMonth);
+    const todayDay = isThisMonth ? today.getDate() : -1;
+
+    select.innerHTML = '';
+    for (let d = 1; d <= daysInMonth; d++) {
+        const hasNote = Boolean(currentMonthJournal[d] && currentMonthJournal[d].trim());
+        const isToday = d === todayDay;
+        const label = `Day ${d}${isToday ? ' (Today)' : ''}${hasNote ? ' • 📝' : ''}`;
+        const opt = new Option(label, d);
+        if (d === gridJournalActiveDay) opt.selected = true;
+        select.add(opt);
+    }
+
+    select.onchange = () => {
+        switchGridJournalDay(parseInt(select.value));
+    };
+}
+
+function switchGridJournalDay(day) {
+    gridJournalActiveDay = Math.max(1, Math.min(daysInMonth, day));
+
+    const select = document.getElementById('gridJournalDaySelect');
+    if (select) select.value = gridJournalActiveDay;
+
+    updateGridJournalDayHeading();
+
+    const input = document.getElementById('gridJournalInput');
+    if (input) {
+        input.value = currentMonthJournal[gridJournalActiveDay] || '';
+    }
+
+    renderGridJournalHistoryChips();
+}
+
+function focusGridJournalDay(day) {
+    switchGridJournalDay(day);
+    const panel = document.getElementById('gridJournalPanel');
+    if (panel) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    const input = document.getElementById('gridJournalInput');
+    if (input) {
+        setTimeout(() => input.focus(), 150);
+    }
+}
+
+function navigateGridJournalDay(delta) {
+    let nextDay = gridJournalActiveDay + delta;
+    if (nextDay < 1) nextDay = daysInMonth;
+    if (nextDay > daysInMonth) nextDay = 1;
+    switchGridJournalDay(nextDay);
+}
+
+function jumpGridJournalToToday() {
+    const today = new Date();
+    const isThisMonth = (today.getFullYear() === currentYear && today.getMonth() === currentMonth);
+    const target = isThisMonth ? today.getDate() : 1;
+    switchGridJournalDay(target);
+}
+
+function showGridJournalSavedHint() {
+    const hint = document.getElementById('gridJournalSavedHint');
+    if (!hint) return;
+    hint.textContent = 'Saved ✓';
+    hint.style.color = 'var(--success)';
+    setTimeout(() => {
+        hint.textContent = 'Auto-saved';
+        hint.style.color = '';
+    }, 1800);
+}
+
+function renderGridJournalHistoryChips() {
+    const container = document.getElementById('gridJournalHistoryChips');
+    if (!container) return;
+
+    container.innerHTML = '';
+    let count = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const text = currentMonthJournal[d];
+        if (!text || !text.trim()) continue;
+        count++;
+
+        const snippet = text.replace(/\n/g, ' ').substring(0, 32);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `grid-journal-chip ${d === gridJournalActiveDay ? 'active' : ''}`;
+        chip.innerHTML = `
+            <span class="grid-journal-chip-day">Day ${d}:</span>
+            <span class="grid-journal-chip-snippet">${sanitizeHTML(snippet)}</span>
+        `;
+        chip.onclick = () => focusGridJournalDay(d);
+        container.appendChild(chip);
+    }
+
+    if (count === 0) {
+        container.innerHTML = `<span style="font-size:0.75rem; color:var(--text-muted);">No notes logged yet for ${monthNames[currentMonth]}. Type above or click + in the table to start!</span>`;
+    }
+}
+
+function updateGridJournalTableRow(day) {
+    const btn = document.querySelector(`.grid-note-cell-btn[data-day="${day}"]`);
+    if (!btn) return;
+    const hasNote = Boolean(currentMonthJournal[day] && currentMonthJournal[day].trim());
+    btn.classList.toggle('has-note', hasNote);
+    btn.innerHTML = hasNote ? '📝' : '+';
+    if (hasNote) {
+        btn.title = `Day ${day}: ${currentMonthJournal[day].substring(0, 80)}`;
+    } else {
+        btn.title = `Log reflection for Day ${day}`;
+    }
 }
 
 // ============================================================
@@ -1877,4 +2097,8 @@ window.deleteJournalPill = deleteJournalPill;
 window.restoreDefaultJournalPills = restoreDefaultJournalPills;
 window.toggleAddPillInput = toggleAddPillInput;
 window.submitCustomPill = submitCustomPill;
+window.navigateGridJournalDay = navigateGridJournalDay;
+window.jumpGridJournalToToday = jumpGridJournalToToday;
+window.focusGridJournalDay = focusGridJournalDay;
+window.switchGridJournalDay = switchGridJournalDay;
 
