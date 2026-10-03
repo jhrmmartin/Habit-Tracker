@@ -332,10 +332,10 @@
                         Receipt
                     </button>
 
-                    <!-- Sync status pill (visible when signed in) -->
-                    <div id="syncStatusIndicator" class="sync-indicator hidden" aria-live="polite">
+                    <!-- Sync status pill (visible when signed in, clickable to force sync) -->
+                    <div id="syncStatusIndicator" class="sync-indicator hidden" aria-live="polite" role="button" tabindex="0" title="Click to sync now with cloud">
                         <span id="syncDot" class="sync-dot synced"></span>
-                        <span id="syncStatusText" class="sync-text">Synced</span>
+                        <span id="syncStatusText" class="sync-text">Synced ✓</span>
                     </div>
 
                     <!-- User badge (visible when signed in) -->

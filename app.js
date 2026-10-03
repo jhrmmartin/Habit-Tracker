@@ -156,6 +156,7 @@ function initTheme() {
         themeSelect.value = savedTheme;
         themeSelect.addEventListener('change', (e) => {
             applyTheme(e.target.value);
+            window.SupaSync?.pushUserPreferences?.();
         });
     }
 }
@@ -471,6 +472,32 @@ window.getTrackerMonth = () => currentMonth;
 window.getHabits = () => habits;
 window.setHabits = (newHabits) => { habits = newHabits; };
 window.updateDashboard = updateDashboard;
+window.applyTheme = applyTheme;
+window.getTheme = () => localStorage.getItem('habitTracker_theme') || 'obsidian';
+window.getJournalTitle = () => journalTitle;
+window.setJournalTitle = (title) => {
+    if (!title || !title.trim()) return;
+    journalTitle = title.trim();
+    localStorage.setItem('habitTracker_journalTitle', journalTitle);
+    updateJournalTitleUI();
+};
+window.getJournalPills = () => journalPills;
+window.setJournalPills = (pills) => {
+    if (!Array.isArray(pills)) return;
+    journalPills = pills;
+    localStorage.setItem('habitTracker_journalPills_v1', JSON.stringify(journalPills));
+    renderAllJournalPills();
+};
+window.getCurrentMonthJournal = () => currentMonthJournal;
+window.setCurrentMonthJournal = (j) => {
+    currentMonthJournal = j || {};
+    const state = safeJSONParse(localStorage.getItem(getStorageKey()), { habits: {}, moodSleep: {}, journal: {} });
+    state.journal = currentMonthJournal;
+    localStorage.setItem(getStorageKey(), JSON.stringify(state));
+    updateJournalIndicators();
+    populateGridJournalDaySelect();
+    renderGridJournalHistoryChips();
+};
 
 // ============================================================
 // HABIT ACTIONS
@@ -1554,6 +1581,7 @@ function saveJournalTitle() {
         journalTitle = val;
         localStorage.setItem('habitTracker_journalTitle', journalTitle);
         updateJournalTitleUI();
+        window.SupaSync?.pushUserPreferences?.();
     }
     closeRenameJournalModal();
 }
@@ -1694,18 +1722,21 @@ function submitCustomPill(containerId, targetInputId) {
 
     renderAllJournalPills();
     insertJournalPrompt(prefix, targetInputId);
+    window.SupaSync?.pushUserPreferences?.();
 }
 
 function deleteJournalPill(id) {
     journalPills = journalPills.filter(p => p.id !== id);
     localStorage.setItem('habitTracker_journalPills_v1', JSON.stringify(journalPills));
     renderAllJournalPills();
+    window.SupaSync?.pushUserPreferences?.();
 }
 
 function restoreDefaultJournalPills() {
     journalPills = [...defaultJournalPills];
     localStorage.setItem('habitTracker_journalPills_v1', JSON.stringify(journalPills));
     renderAllJournalPills();
+    window.SupaSync?.pushUserPreferences?.();
 }
 
 function showJournalSavedHint() {

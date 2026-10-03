@@ -997,6 +997,18 @@ select.mood-sleep-select option {
     border: 1px solid var(--border-subtle);
     font-size: 0.75rem;
     font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.sync-indicator:hover {
+    border-color: var(--accent-border);
+    background: var(--bg-surface);
+}
+
+.sync-indicator:active {
+    transform: scale(0.97);
 }
 
 .sync-dot {
