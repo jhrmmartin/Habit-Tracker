@@ -52,6 +52,72 @@
         </div>
     </div>
 
+    <!-- ══ Discipline Receipt Modal ══════════════════════════ -->
+    <div class="modal-overlay" id="receiptModalOverlay" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
+        <div class="modal-box receipt-modal-box">
+            <div id="receiptPaper" class="receipt-paper">
+                <div class="receipt-header">
+                    <div class="receipt-brand">✦ DISCIPLINE RECEIPT ✦</div>
+                    <div class="receipt-subtitle" id="receiptMonthYear">OCTOBER 2026</div>
+                </div>
+                <hr class="receipt-divider">
+                <div class="receipt-row bold">
+                    <span class="receipt-label">DISCIPLINE RATE</span>
+                    <span class="receipt-value" id="rcptRate">0%</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">HABITS LOGGED</span>
+                    <span class="receipt-value" id="rcptLogged">0 / 0</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">ACTIVE STREAK</span>
+                    <span class="receipt-value" id="rcptStreak">0 days</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">AVG SLEEP</span>
+                    <span class="receipt-value" id="rcptSleep">-- hrs</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">AVG MOOD</span>
+                    <span class="receipt-value" id="rcptMood">-- / 10</span>
+                </div>
+                <hr class="receipt-divider">
+                <div class="receipt-habits-title">TOP DISCIPLINE HABITS</div>
+                <div id="rcptTopHabits"></div>
+                <hr class="receipt-divider">
+                <div class="receipt-barcode" aria-hidden="true">
+                    <span class="barcode-bar" style="width:2px"></span>
+                    <span class="barcode-bar" style="width:4px"></span>
+                    <span class="barcode-bar" style="width:1px"></span>
+                    <span class="barcode-bar" style="width:3px"></span>
+                    <span class="barcode-bar" style="width:2px"></span>
+                    <span class="barcode-bar" style="width:5px"></span>
+                    <span class="barcode-bar" style="width:1px"></span>
+                    <span class="barcode-bar" style="width:3px"></span>
+                    <span class="barcode-bar" style="width:4px"></span>
+                    <span class="barcode-bar" style="width:2px"></span>
+                    <span class="barcode-bar" style="width:1px"></span>
+                    <span class="barcode-bar" style="width:3px"></span>
+                    <span class="barcode-bar" style="width:4px"></span>
+                    <span class="barcode-bar" style="width:2px"></span>
+                </div>
+                <div class="receipt-quote">"We are what we repeatedly do."</div>
+                <div class="receipt-footer-url">habit-tracker · jhrmmartin.github.io</div>
+            </div>
+            <div class="receipt-actions">
+                <button class="btn btn-primary" onclick="downloadReceiptPNG()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download PNG
+                </button>
+                <button class="btn" id="copyReceiptBtn" onclick="copyReceiptToClipboard()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy Image
+                </button>
+                <button class="btn" onclick="closeReceiptModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div class="dashboard-container">
 
         <!-- ══════════════════ LEFT COLUMN ══════════════════════ -->
@@ -93,6 +159,16 @@
                             <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
                         Export CSV
+                    </button>
+
+                    <button class="btn btn-receipt" onclick="openReceiptModal()" aria-label="Generate Monthly Discipline Receipt">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
+                            <path d="M16 8h-8"/>
+                            <path d="M16 12h-8"/>
+                            <path d="M13 16h-5"/>
+                        </svg>
+                        Receipt
                     </button>
 
                     <!-- Sync status pill (visible when signed in) -->
@@ -269,6 +345,19 @@
                     </h2>
                 </div>
                 <ul class="top-habits-list" id="topHabitsList"></ul>
+            </section>
+
+            <!-- Discipline Intelligence (Correlation Insights) -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M2 12h5l3 7 4-14 3 7h5"/>
+                        </svg>
+                        Discipline Intelligence
+                    </h2>
+                </div>
+                <div id="insightsContainer" class="insights-container"></div>
             </section>
 
         </aside>

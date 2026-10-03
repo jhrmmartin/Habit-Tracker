@@ -213,6 +213,15 @@ window.onload = () => {
         });
     }
 
+    // Modal dismiss listeners
+    document.getElementById('receiptModalOverlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'receiptModalOverlay') closeReceiptModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeReceiptModal();
+    });
+
     updateDashboard();
 };
 
@@ -680,6 +689,387 @@ function calculateStats() {
 
     overallChart.data.datasets[0].data = [totalCompleted, Math.max(0, totalGoal - totalCompleted)];
     overallChart.update();
+
+    lastStatsData = {
+        totalCompleted,
+        totalGoal,
+        countUpTo,
+        checksPerDay,
+        checksPerHabit,
+        habitStatsArray,
+        moodData,
+        sleepData
+    };
+
+    updateDisciplineIntelligence(lastStatsData);
+}
+
+let lastStatsData = null;
+
+// ============================================================
+// DISCIPLINE INTELLIGENCE (CORRELATION & PATTERN ENGINE)
+// ============================================================
+function updateDisciplineIntelligence({ checksPerDay, moodData, sleepData, habitStatsArray, countUpTo, totalCompleted }) {
+    const container = document.getElementById('insightsContainer');
+    if (!container) return;
+
+    if (!habits || habits.length === 0 || countUpTo < 2 || totalCompleted === 0) {
+        container.innerHTML = `
+            <div class="insight-empty">
+                Log a few days of habits with mood and sleep to reveal your personal behavioral telemetry.
+            </div>
+        `;
+        return;
+    }
+
+    const cards = [];
+
+    // 1. Sleep Leverage Correlation
+    const sleepHigh = [];
+    const sleepLow = [];
+    for (let d = 0; d < countUpTo; d++) {
+        const sleep = sleepData[d];
+        if (sleep !== null && !isNaN(sleep)) {
+            const completion = habits.length > 0 ? (checksPerDay[d] / habits.length) : 0;
+            if (sleep >= 7) sleepHigh.push(completion);
+            else sleepLow.push(completion);
+        }
+    }
+
+    if (sleepHigh.length > 0 && sleepLow.length > 0) {
+        const avgHigh = Math.round((sleepHigh.reduce((a, b) => a + b, 0) / sleepHigh.length) * 100);
+        const avgLow = Math.round((sleepLow.reduce((a, b) => a + b, 0) / sleepLow.length) * 100);
+        const diff = avgHigh - avgLow;
+        if (diff > 0) {
+            cards.push({
+                icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`,
+                headline: `Sleep Leverage: +${diff}% Discipline`,
+                detail: `On nights with 7+ hours of sleep, your habit completion averages ${avgHigh}% compared to ${avgLow}% on shorter nights.`
+            });
+        }
+    } else if (sleepHigh.length + sleepLow.length >= 2) {
+        const recorded = sleepData.slice(0, countUpTo).filter(s => s !== null && !isNaN(s));
+        if (recorded.length) {
+            const avg = (recorded.reduce((a, b) => a + b, 0) / recorded.length).toFixed(1);
+            cards.push({
+                icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`,
+                headline: `Sleep Baseline: ${avg} hrs/night`,
+                detail: `Tracking nightly sleep provides the baseline for sustainable physical and mental discipline.`
+            });
+        }
+    }
+
+    // 2. Mood Correlation
+    const highMoods = [];
+    const lowMoods = [];
+    for (let d = 0; d < countUpTo; d++) {
+        const mood = moodData[d];
+        if (mood !== null && !isNaN(mood)) {
+            const rate = habits.length > 0 ? (checksPerDay[d] / habits.length) : 0;
+            if (rate >= 0.5) highMoods.push(mood);
+            else lowMoods.push(mood);
+        }
+    }
+
+    if (highMoods.length > 0 && lowMoods.length > 0) {
+        const avgHighMood = (highMoods.reduce((a, b) => a + b, 0) / highMoods.length).toFixed(1);
+        const avgLowMood = (lowMoods.reduce((a, b) => a + b, 0) / lowMoods.length).toFixed(1);
+        const diffMood = (avgHighMood - avgLowMood).toFixed(1);
+        if (parseFloat(diffMood) > 0.2) {
+            cards.push({
+                icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`,
+                headline: `Mood Elevation: +${diffMood} Pts`,
+                detail: `Your mood averages ${avgHighMood}/10 on disciplined days compared to ${avgLowMood}/10 on off days.`
+            });
+        }
+    }
+
+    // 3. Peak Day of the Week
+    const dayTotals = [0, 0, 0, 0, 0, 0, 0];
+    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+    for (let d = 1; d <= countUpTo; d++) {
+        const dow = new Date(currentYear, currentMonth, d).getDay();
+        dayTotals[dow] += checksPerDay[d - 1];
+        dayCounts[dow] += habits.length;
+    }
+
+    let bestDow = -1, bestRate = 0;
+    for (let dow = 0; dow < 7; dow++) {
+        if (dayCounts[dow] > 0) {
+            const r = dayTotals[dow] / dayCounts[dow];
+            if (r > bestRate && dayTotals[dow] > 0) {
+                bestRate = r;
+                bestDow = dow;
+            }
+        }
+    }
+
+    const fullDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    if (bestDow !== -1 && bestRate > 0) {
+        cards.push({
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+            headline: `Peak Rhythm: ${fullDays[bestDow]}s`,
+            detail: `You hit your highest consistency on ${fullDays[bestDow]}s with an average of ${Math.round(bestRate * 100)}% habits checked.`
+        });
+    }
+
+    // 4. Anchor Habit
+    if (habitStatsArray && habitStatsArray.length > 0 && habitStatsArray[0].actual > 0) {
+        const anchor = habitStatsArray[0];
+        const pct = Math.round((anchor.actual / daysInMonth) * 100);
+        cards.push({
+            icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
+            headline: `Anchor: ${sanitizeHTML(anchor.name)}`,
+            detail: `Top-performing habit at ${pct}% completion (${anchor.actual}/${daysInMonth} days) with an active streak of ${anchor.streak} days.`
+        });
+    }
+
+    if (cards.length === 0) {
+        container.innerHTML = `
+            <div class="insight-empty">
+                Keep tracking daily to unlock deeper wellness and consistency insights.
+            </div>
+        `;
+    } else {
+        container.innerHTML = cards.map(c => `
+            <div class="insight-card">
+                <div class="insight-icon-wrap" aria-hidden="true">${c.icon}</div>
+                <div class="insight-content">
+                    <div class="insight-headline">${c.headline}</div>
+                    <div class="insight-detail">${c.detail}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+// ============================================================
+// MONTHLY DISCIPLINE RECEIPT GENERATOR & MODAL
+// ============================================================
+function openReceiptModal() {
+    const overlay = document.getElementById('receiptModalOverlay');
+    if (!overlay) return;
+
+    const stats = lastStatsData || {};
+    const totalGoal = (habits.length * daysInMonth) || 1;
+    const totalDone = stats.totalCompleted || 0;
+    const rate = Math.round((totalDone / totalGoal) * 100);
+
+    const mName = monthNames[currentMonth].toUpperCase();
+    document.getElementById('receiptMonthYear').textContent = `${mName} ${currentYear}`;
+    document.getElementById('rcptRate').textContent = `${rate}%`;
+    document.getElementById('rcptLogged').textContent = `${totalDone} / ${totalGoal}`;
+
+    const bestActiveStreak = stats.habitStatsArray?.reduce((max, h) => Math.max(max, h.streak), 0) || 0;
+    document.getElementById('rcptStreak').textContent = `${bestActiveStreak} day${bestActiveStreak === 1 ? '' : 's'}`;
+
+    const validSleep = (stats.sleepData || []).filter(v => v !== null && !isNaN(v));
+    const avgSleep = validSleep.length ? (validSleep.reduce((a, b) => a + b, 0) / validSleep.length).toFixed(1) + ' hrs' : '--';
+    document.getElementById('rcptSleep').textContent = avgSleep;
+
+    const validMood = (stats.moodData || []).filter(v => v !== null && !isNaN(v));
+    const avgMood = validMood.length ? (validMood.reduce((a, b) => a + b, 0) / validMood.length).toFixed(1) + ' / 10' : '--';
+    document.getElementById('rcptMood').textContent = avgMood;
+
+    const topContainer = document.getElementById('rcptTopHabits');
+    if (topContainer) {
+        const topHabits = (stats.habitStatsArray || []).slice(0, 3);
+        if (topHabits.length === 0) {
+            topContainer.innerHTML = '<div style="color:var(--text-muted); font-size:0.7rem; padding:4px 0;">No habits recorded yet.</div>';
+        } else {
+            topContainer.innerHTML = topHabits.map((h, i) => {
+                const pct = Math.round((h.actual / daysInMonth) * 100);
+                return `
+                    <div class="receipt-row">
+                        <span class="receipt-label">#${i + 1} ${sanitizeHTML(h.name)}</span>
+                        <span class="receipt-value">${pct}%</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    overlay.classList.add('active');
+}
+
+function closeReceiptModal() {
+    document.getElementById('receiptModalOverlay')?.classList.remove('active');
+}
+
+function generateReceiptCanvas() {
+    const canvas = document.createElement('canvas');
+    const width = 440;
+    const height = 580;
+    const dpr = 2;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const isLight = document.documentElement.getAttribute('data-theme') === 'paper';
+    const bg = isLight ? '#f6f5f0' : '#0c0d11';
+    const cardBg = isLight ? '#ffffff' : '#14151e';
+    const textColor = isLight ? '#1c1917' : '#f2f3f7';
+    const textMuted = isLight ? '#78716c' : '#73778c';
+    const accent = isLight ? '#c2410c' : '#e59838';
+    const borderColor = isLight ? '#e7e5e4' : '#27293a';
+
+    // Canvas background
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+
+    // Card boundary
+    const pad = 20;
+    const cardW = width - (pad * 2);
+    const cardH = height - (pad * 2);
+
+    ctx.fillStyle = cardBg;
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.roundRect(pad, pad, cardW, cardH, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    const left = pad + 20;
+    const right = width - pad - 20;
+    let y = pad + 36;
+
+    // Header
+    ctx.textAlign = 'center';
+    ctx.font = '700 13px "JetBrains Mono", monospace';
+    ctx.fillStyle = accent;
+    ctx.fillText('✦ DISCIPLINE RECEIPT ✦', width / 2, y);
+
+    y += 18;
+    ctx.font = '500 11px "JetBrains Mono", monospace';
+    ctx.fillStyle = textMuted;
+    ctx.fillText(`${monthNames[currentMonth].toUpperCase()} ${currentYear}`, width / 2, y);
+
+    function drawDashedLine(lineY) {
+        ctx.strokeStyle = borderColor;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(left, lineY);
+        ctx.lineTo(right, lineY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    y += 16;
+    drawDashedLine(y);
+
+    function drawRow(label, val, isBold = false) {
+        y += 22;
+        ctx.textAlign = 'left';
+        ctx.font = `${isBold ? '700' : '500'} 11px "JetBrains Mono", monospace`;
+        ctx.fillStyle = isBold ? textColor : textMuted;
+        ctx.fillText(label, left, y);
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = textColor;
+        ctx.fillText(val, right, y);
+    }
+
+    const stats = lastStatsData || {};
+    const totalGoal = (habits.length * daysInMonth) || 1;
+    const totalDone = stats.totalCompleted || 0;
+    const rate = Math.round((totalDone / totalGoal) * 100);
+    const bestActiveStreak = stats.habitStatsArray?.reduce((max, h) => Math.max(max, h.streak), 0) || 0;
+
+    const validSleep = (stats.sleepData || []).filter(v => v !== null && !isNaN(v));
+    const avgSleep = validSleep.length ? (validSleep.reduce((a, b) => a + b, 0) / validSleep.length).toFixed(1) + ' hrs' : '--';
+
+    const validMood = (stats.moodData || []).filter(v => v !== null && !isNaN(v));
+    const avgMood = validMood.length ? (validMood.reduce((a, b) => a + b, 0) / validMood.length).toFixed(1) + ' / 10' : '--';
+
+    drawRow('DISCIPLINE RATE', `${rate}%`, true);
+    drawRow('HABITS LOGGED', `${totalDone} / ${totalGoal}`);
+    drawRow('ACTIVE STREAK', `${bestActiveStreak} days`);
+    drawRow('AVG SLEEP', avgSleep);
+    drawRow('AVG MOOD', avgMood);
+
+    y += 16;
+    drawDashedLine(y);
+
+    y += 16;
+    ctx.textAlign = 'left';
+    ctx.font = '600 10px "JetBrains Mono", monospace';
+    ctx.fillStyle = textMuted;
+    ctx.fillText('TOP DISCIPLINE HABITS', left, y);
+
+    const topHabits = (stats.habitStatsArray || []).slice(0, 3);
+    topHabits.forEach((h, i) => {
+        const pct = Math.round((h.actual / daysInMonth) * 100);
+        let name = h.name;
+        if (name.length > 20) name = name.substring(0, 18) + '…';
+        drawRow(`#${i + 1} ${name}`, `${pct}%`);
+    });
+
+    y += 18;
+    drawDashedLine(y);
+
+    // Barcode
+    y += 16;
+    const bars = [2, 4, 1, 3, 2, 5, 1, 3, 4, 2, 1, 3, 5, 2, 4, 1, 3, 2, 4, 1, 3];
+    const totalBarW = bars.reduce((a, b) => a + b, 0) + (bars.length * 2.5);
+    let startX = (width - totalBarW) / 2;
+
+    ctx.fillStyle = textColor;
+    bars.forEach(w => {
+        ctx.fillRect(startX, y, w, 22);
+        startX += w + 2.5;
+    });
+
+    // Footer
+    y += 38;
+    ctx.textAlign = 'center';
+    ctx.font = 'italic 11px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = textMuted;
+    ctx.fillText('"We are what we repeatedly do."', width / 2, y);
+
+    y += 16;
+    ctx.font = '500 10px "JetBrains Mono", monospace';
+    ctx.fillStyle = textMuted;
+    ctx.fillText('habit-tracker · jhrmmartin.github.io', width / 2, y);
+
+    return canvas;
+}
+
+function downloadReceiptPNG() {
+    const canvas = generateReceiptCanvas();
+    canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Habit_Receipt_${monthNames[currentMonth]}_${currentYear}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+}
+
+async function copyReceiptToClipboard() {
+    const btn = document.getElementById('copyReceiptBtn');
+    const canvas = generateReceiptCanvas();
+    canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        try {
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+            ]);
+            if (btn) {
+                const originalHtml = btn.innerHTML;
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => btn.innerHTML = originalHtml, 2000);
+            }
+        } catch {
+            alert('Could not copy image automatically. You can download the PNG instead!');
+        }
+    });
 }
 
 // Snappy number interpolation with zero spin-lock risk
