@@ -228,11 +228,36 @@
     <div class="modal-overlay" id="dayNoteModalOverlay" role="dialog" aria-modal="true" aria-labelledby="dayNoteTitle">
         <div class="modal-box day-note-modal-box">
             <h3 class="modal-title" id="dayNoteTitle">Daily Reflection</h3>
-            <p class="modal-subtitle" id="dayNoteSubtitle">View or edit your win and note for this date.</p>
-            <textarea id="dayNoteModalInput" class="today-journal-textarea" rows="4" placeholder="No reflection logged yet for this date. Write your win or note here…"></textarea>
+            <p class="modal-subtitle" id="dayNoteSubtitle">View or edit your entry for this date.</p>
+            <div class="journal-prompt-pills" id="modalJournalPromptPills" role="toolbar" aria-label="Modal reflection prompt pills"></div>
+            <textarea id="dayNoteModalInput" class="today-journal-textarea" rows="4" placeholder="No entry logged yet for this date. Write your thoughts or notes here…"></textarea>
             <div class="modal-actions">
                 <button class="btn" onclick="closeDayNoteModal()">Cancel</button>
                 <button class="btn btn-primary" onclick="saveDayNoteFromModal()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ Rename Journal Type Modal ═════════════════════════ -->
+    <div class="modal-overlay" id="renameJournalModalOverlay" role="dialog" aria-modal="true" aria-labelledby="renameJournalTitle">
+        <div class="modal-box rename-journal-modal-box">
+            <h3 class="modal-title" id="renameJournalTitle">What kind of journal is this?</h3>
+            <p class="modal-subtitle">Pick a popular journal type or write your own custom name.</p>
+            <div class="journal-type-presets" role="toolbar" aria-label="Quick journal presets">
+                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Daily Reflection &amp; Win')">Daily Reflection</button>
+                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Gratitude Journal')">Gratitude Journal</button>
+                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Work &amp; Focus Log')">Work &amp; Focus Log</button>
+                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Fitness &amp; Health Log')">Fitness Log</button>
+                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Evening Brain Dump')">Evening Brain Dump</button>
+                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Stoic Diary')">Stoic Diary</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="customJournalTitleInput">Custom Journal Title</label>
+                <input type="text" id="customJournalTitleInput" class="form-input" placeholder="e.g. My Discipline Notes, Trading Journal, Thoughts…" maxlength="40">
+            </div>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeRenameJournalModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveJournalTitle()">Save Title</button>
             </div>
         </div>
     </div>
@@ -456,20 +481,18 @@
                 <!-- Today Micro-Journal & Daily Reflection -->
                 <div class="today-journal-card" id="todayJournalCard">
                     <div class="today-journal-header">
-                        <div class="today-journal-title">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                            <span>Daily Reflection &amp; Win</span>
+                        <div class="today-journal-title-wrap">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            <span class="editable-journal-title" id="journalCardTitle" onclick="openRenameJournalModal()" title="Click to rename what kind of journal this is">Daily Reflection &amp; Win</span>
+                            <button type="button" class="icon-btn edit-journal-title-btn" onclick="openRenameJournalModal()" title="Rename journal type" aria-label="Rename journal type">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                            </button>
                         </div>
                         <span class="journal-status-text" id="journalSavedHint">Auto-saved</span>
                     </div>
-                    <div class="journal-prompt-pills" role="toolbar" aria-label="Reflection prompt pills">
-                        <button type="button" class="prompt-pill" onclick="insertJournalPrompt('🏆 Win: ')">🏆 Win</button>
-                        <button type="button" class="prompt-pill" onclick="insertJournalPrompt('💭 Lesson: ')">💭 Lesson</button>
-                        <button type="button" class="prompt-pill" onclick="insertJournalPrompt('🎯 Priority: ')">🎯 Priority</button>
-                        <button type="button" class="prompt-pill" onclick="insertJournalPrompt('✨ Grateful: ')">✨ Grateful</button>
-                    </div>
+                    <div class="journal-prompt-pills" id="todayJournalPills" role="toolbar" aria-label="Reflection prompt pills"></div>
                     <textarea id="todayJournalInput" class="today-journal-textarea" rows="3"
-                        placeholder="What went well today? Any breakthrough or lesson learned? (Auto-saves locally &amp; to cloud)"
+                        placeholder="Write your entry here… (Auto-saves locally &amp; to cloud)"
                         aria-label="Daily reflection notes"></textarea>
                 </div>
 

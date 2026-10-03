@@ -1628,13 +1628,45 @@ select.mood-sleep-select option {
     align-items: center;
 }
 
-.today-journal-title {
+.today-journal-title-wrap {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+}
+
+.editable-journal-title {
     font-size: 0.8125rem;
     font-weight: 600;
     color: var(--text-primary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    padding: 2px 5px;
+    margin: -2px -5px;
+    transition: background var(--duration-micro), color var(--duration-micro);
+}
+
+.editable-journal-title:hover {
+    color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+.edit-journal-title-btn {
+    opacity: 0.6;
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity var(--duration-micro), color var(--duration-micro);
+}
+
+.edit-journal-title-btn:hover {
+    opacity: 1;
+    color: var(--accent);
 }
 
 .journal-status-text {
@@ -1647,6 +1679,13 @@ select.mood-sleep-select option {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
+    align-items: center;
+}
+
+.prompt-pill-item {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
 }
 
 .prompt-pill {
@@ -1659,12 +1698,119 @@ select.mood-sleep-select option {
     color: var(--text-secondary);
     cursor: pointer;
     transition: all var(--duration-micro) var(--ease-snappy);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .prompt-pill:hover {
     color: var(--text-primary);
     border-color: var(--accent-border);
     background: var(--accent-subtle);
+}
+
+.pill-remove-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin-left: 2px;
+    font-size: 11px;
+    line-height: 1;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.35;
+    transition: all var(--duration-micro);
+}
+
+.prompt-pill-item:hover .pill-remove-btn,
+.pill-remove-btn:focus {
+    opacity: 1;
+    color: var(--danger, #ef4444);
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.add-custom-pill-btn {
+    border-style: dashed;
+    color: var(--accent);
+    background: transparent;
+    border-color: var(--accent-border);
+}
+
+.add-custom-pill-btn:hover {
+    background: var(--accent-subtle);
+    color: var(--text-primary);
+}
+
+.add-pill-inline-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-focus);
+    border-radius: var(--radius-pill);
+    padding: 2px 4px 2px 8px;
+    box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.add-pill-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 0.6875rem;
+    color: var(--text-primary);
+    width: 120px;
+}
+
+.add-pill-input::placeholder {
+    color: var(--text-muted);
+}
+
+.btn-mini {
+    padding: 2px 7px;
+    font-size: 0.6875rem;
+    border-radius: var(--radius-pill);
+    min-height: auto;
+    height: 20px;
+    cursor: pointer;
+}
+
+.journal-type-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 14px;
+}
+
+.preset-tag-btn {
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.preset-tag-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent-border);
+    background: var(--accent-subtle);
+}
+
+.rename-journal-modal-box {
+    max-width: 440px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .today-journal-textarea {

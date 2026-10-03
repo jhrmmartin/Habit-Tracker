@@ -231,12 +231,16 @@ window.onload = () => {
     document.getElementById('dayNoteModalOverlay')?.addEventListener('click', (e) => {
         if (e.target.id === 'dayNoteModalOverlay') closeDayNoteModal();
     });
+    document.getElementById('renameJournalModalOverlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'renameJournalModalOverlay') closeRenameJournalModal();
+    });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeReceiptModal();
             closeOnboardingModal();
             closeDayNoteModal();
+            closeRenameJournalModal();
         }
     });
 
@@ -374,7 +378,10 @@ function renderTodayFocus() {
         };
     }
 
-    // Sync Today Micro-Journal Reflection
+    // Sync Today Micro-Journal Reflection & Custom Pills
+    updateJournalTitleUI();
+    renderJournalPillsContainer('todayJournalPills', 'todayJournalInput');
+
     const todayJournalInput = document.getElementById('todayJournalInput');
     if (todayJournalInput) {
         todayJournalInput.value = currentMonthJournal[activeDay] || '';
@@ -1462,12 +1469,208 @@ function initCharts() {
 }
 
 // ============================================================
-// MICRO-JOURNAL & DAILY REFLECTION
+// MICRO-JOURNAL & REFLECTION SYSTEM (Customizable Types & Tags)
 // ============================================================
 let modalActiveDay = null;
 
+const defaultJournalPills = [
+    { id: 'win', label: '🏆 Win', prefix: '🏆 Win: ' },
+    { id: 'lesson', label: '💭 Lesson', prefix: '💭 Lesson: ' },
+    { id: 'priority', label: '🎯 Priority', prefix: '🎯 Priority: ' },
+    { id: 'grateful', label: '✨ Grateful', prefix: '✨ Grateful: ' }
+];
+
+let journalPills = safeJSONParse(localStorage.getItem('habitTracker_journalPills_v1'), defaultJournalPills);
+let journalTitle = localStorage.getItem('habitTracker_journalTitle') || 'Daily Reflection & Win';
+
 function initJournal() {
+    updateJournalTitleUI();
+    renderAllJournalPills();
     updateJournalIndicators();
+}
+
+function updateJournalTitleUI() {
+    const el = document.getElementById('journalCardTitle');
+    if (el) el.textContent = journalTitle;
+}
+
+function openRenameJournalModal() {
+    const overlay = document.getElementById('renameJournalModalOverlay');
+    const input = document.getElementById('customJournalTitleInput');
+    if (input) input.value = journalTitle;
+    if (overlay) overlay.classList.add('active');
+    setTimeout(() => input?.focus(), 80);
+}
+
+function closeRenameJournalModal() {
+    const overlay = document.getElementById('renameJournalModalOverlay');
+    if (overlay) overlay.classList.remove('active');
+}
+
+function selectJournalPreset(presetName) {
+    const input = document.getElementById('customJournalTitleInput');
+    if (input) input.value = presetName;
+    saveJournalTitle();
+}
+
+function saveJournalTitle() {
+    const input = document.getElementById('customJournalTitleInput');
+    const val = input ? input.value.trim() : '';
+    if (val) {
+        journalTitle = val;
+        localStorage.setItem('habitTracker_journalTitle', journalTitle);
+        updateJournalTitleUI();
+    }
+    closeRenameJournalModal();
+}
+
+function renderAllJournalPills() {
+    renderJournalPillsContainer('todayJournalPills', 'todayJournalInput');
+    renderJournalPillsContainer('modalJournalPromptPills', 'dayNoteModalInput');
+}
+
+function renderJournalPillsContainer(containerId, targetInputId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Render active pills
+    journalPills.forEach(pill => {
+        const item = document.createElement('div');
+        item.className = 'prompt-pill-item';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'prompt-pill';
+        btn.textContent = pill.label;
+        btn.onclick = () => insertJournalPrompt(pill.prefix, targetInputId);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'pill-remove-btn';
+        delBtn.textContent = '×';
+        delBtn.title = `Remove "${pill.label}" tag`;
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteJournalPill(pill.id);
+        };
+
+        item.appendChild(btn);
+        item.appendChild(delBtn);
+        container.appendChild(item);
+    });
+
+    // Add Tag Button
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'prompt-pill add-custom-pill-btn';
+    addBtn.id = `addBtn_${containerId}`;
+    addBtn.innerHTML = `
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5"  y1="12" x2="19" y2="12"/></svg>
+        <span>Add Tag</span>
+    `;
+    addBtn.onclick = () => toggleAddPillInput(containerId, true);
+    container.appendChild(addBtn);
+
+    // Inline input wrap
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'add-pill-inline-wrap hidden';
+    inputWrap.id = `inputWrap_${containerId}`;
+    inputWrap.innerHTML = `
+        <input type="text" class="add-pill-input" id="pillInput_${containerId}" placeholder="e.g. Workout, Ideas…" maxlength="24" />
+        <button type="button" class="btn btn-primary btn-mini" id="pillConfirm_${containerId}">Add</button>
+        <button type="button" class="btn btn-ghost btn-mini" id="pillCancel_${containerId}">✕</button>
+    `;
+    container.appendChild(inputWrap);
+
+    // Listeners for inline input
+    const inputEl = inputWrap.querySelector(`#pillInput_${containerId}`);
+    const confirmBtn = inputWrap.querySelector(`#pillConfirm_${containerId}`);
+    const cancelBtn = inputWrap.querySelector(`#pillCancel_${containerId}`);
+
+    if (inputEl) {
+        inputEl.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitCustomPill(containerId, targetInputId);
+            } else if (e.key === 'Escape') {
+                toggleAddPillInput(containerId, false);
+            }
+        };
+    }
+    if (confirmBtn) {
+        confirmBtn.onclick = () => submitCustomPill(containerId, targetInputId);
+    }
+    if (cancelBtn) {
+        cancelBtn.onclick = () => toggleAddPillInput(containerId, false);
+    }
+
+    // Reset default tags button if user removed all
+    if (journalPills.length === 0) {
+        const restoreBtn = document.createElement('button');
+        restoreBtn.type = 'button';
+        restoreBtn.className = 'prompt-pill';
+        restoreBtn.style.color = 'var(--text-muted)';
+        restoreBtn.style.fontSize = '0.65rem';
+        restoreBtn.textContent = '↺ Reset default tags';
+        restoreBtn.onclick = restoreDefaultJournalPills;
+        container.appendChild(restoreBtn);
+    }
+}
+
+function toggleAddPillInput(containerId, show) {
+    const addBtn = document.getElementById(`addBtn_${containerId}`);
+    const inputWrap = document.getElementById(`inputWrap_${containerId}`);
+    const inputEl = document.getElementById(`pillInput_${containerId}`);
+
+    if (addBtn) addBtn.classList.toggle('hidden', show);
+    if (inputWrap) inputWrap.classList.toggle('hidden', !show);
+
+    if (show && inputEl) {
+        inputEl.value = '';
+        inputEl.focus();
+    }
+}
+
+function submitCustomPill(containerId, targetInputId) {
+    const inputEl = document.getElementById(`pillInput_${containerId}`);
+    const rawVal = inputEl ? inputEl.value.trim() : '';
+    if (!rawVal) {
+        toggleAddPillInput(containerId, false);
+        return;
+    }
+
+    let label = rawVal;
+    const hasEmoji = /\p{Extended_Pictographic}/u.test(rawVal);
+    if (!hasEmoji) {
+        label = `🏷️ ${rawVal}`;
+    }
+    const prefix = `${label}: `;
+
+    const newPill = {
+        id: 'pill_' + generateUUID(),
+        label: label,
+        prefix: prefix
+    };
+
+    journalPills.push(newPill);
+    localStorage.setItem('habitTracker_journalPills_v1', JSON.stringify(journalPills));
+
+    renderAllJournalPills();
+    insertJournalPrompt(prefix, targetInputId);
+}
+
+function deleteJournalPill(id) {
+    journalPills = journalPills.filter(p => p.id !== id);
+    localStorage.setItem('habitTracker_journalPills_v1', JSON.stringify(journalPills));
+    renderAllJournalPills();
+}
+
+function restoreDefaultJournalPills() {
+    journalPills = [...defaultJournalPills];
+    localStorage.setItem('habitTracker_journalPills_v1', JSON.stringify(journalPills));
+    renderAllJournalPills();
 }
 
 function showJournalSavedHint() {
@@ -1491,9 +1694,10 @@ function saveJournalNote(day, text) {
     updateJournalIndicators();
 }
 
-function insertJournalPrompt(prompt) {
-    const journalInput = document.getElementById('todayJournalInput');
+function insertJournalPrompt(prompt, targetInputId = 'todayJournalInput') {
+    const journalInput = document.getElementById(targetInputId) || document.getElementById('todayJournalInput');
     if (!journalInput) return;
+
     const curVal = journalInput.value;
     if (curVal.length > 0 && !curVal.endsWith('\n')) {
         journalInput.value += '\n' + prompt;
@@ -1503,12 +1707,13 @@ function insertJournalPrompt(prompt) {
     journalInput.focus();
     journalInput.selectionStart = journalInput.selectionEnd = journalInput.value.length;
 
-    const today = new Date();
-    const isCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
-    const activeDay = isCurrentMonth ? today.getDate() : 1;
-
-    saveJournalNote(activeDay, journalInput.value);
-    showJournalSavedHint();
+    if (targetInputId === 'todayJournalInput') {
+        const today = new Date();
+        const isCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
+        const activeDay = isCurrentMonth ? today.getDate() : 1;
+        saveJournalNote(activeDay, journalInput.value);
+        showJournalSavedHint();
+    }
 }
 
 function updateJournalIndicators() {
@@ -1539,9 +1744,11 @@ function openDayNoteModal(day) {
 
     const dateObj = new Date(currentYear, currentMonth, day);
     const dayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dateObj.getDay()];
-    if (title) title.textContent = `Daily Reflection · ${monthNames[currentMonth]} ${day}, ${currentYear}`;
-    if (subtitle) subtitle.textContent = `${dayName} — Win of the day & personal reflections`;
+    if (title) title.textContent = `${journalTitle} · ${monthNames[currentMonth]} ${day}, ${currentYear}`;
+    if (subtitle) subtitle.textContent = `${dayName} — Daily reflections, wins, & notes`;
     input.value = currentMonthJournal[day] || '';
+
+    renderJournalPillsContainer('modalJournalPromptPills', 'dayNoteModalInput');
 
     overlay.classList.add('active');
     input.focus();
@@ -1662,4 +1869,12 @@ window.closeDayNoteModal = closeDayNoteModal;
 window.saveDayNoteFromModal = saveDayNoteFromModal;
 window.insertJournalPrompt = insertJournalPrompt;
 window.getCurrentJournal = () => currentMonthJournal;
+window.openRenameJournalModal = openRenameJournalModal;
+window.closeRenameJournalModal = closeRenameJournalModal;
+window.selectJournalPreset = selectJournalPreset;
+window.saveJournalTitle = saveJournalTitle;
+window.deleteJournalPill = deleteJournalPill;
+window.restoreDefaultJournalPills = restoreDefaultJournalPills;
+window.toggleAddPillInput = toggleAddPillInput;
+window.submitCustomPill = submitCustomPill;
 
