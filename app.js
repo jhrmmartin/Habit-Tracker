@@ -225,12 +225,24 @@ window.onload = () => {
     document.getElementById('receiptModalOverlay')?.addEventListener('click', (e) => {
         if (e.target.id === 'receiptModalOverlay') closeReceiptModal();
     });
+    document.getElementById('onboardingModalOverlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'onboardingModalOverlay') closeOnboardingModal();
+    });
+    document.getElementById('dayNoteModalOverlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'dayNoteModalOverlay') closeDayNoteModal();
+    });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeReceiptModal();
+        if (e.key === 'Escape') {
+            closeReceiptModal();
+            closeOnboardingModal();
+            closeDayNoteModal();
+        }
     });
 
     updateDashboard();
+    initJournal();
+    initOnboarding();
 };
 
 // ============================================================
@@ -359,6 +371,19 @@ function renderTodayFocus() {
             sleepSelectInGrid.value = todaySleep.value;
             saveState();
             calculateStats();
+        };
+    }
+
+    // Sync Today Micro-Journal Reflection
+    const todayJournalInput = document.getElementById('todayJournalInput');
+    if (todayJournalInput) {
+        todayJournalInput.value = currentMonthJournal[activeDay] || '';
+        todayJournalInput.oninput = () => {
+            if (_journalDebounceTimer) clearTimeout(_journalDebounceTimer);
+            _journalDebounceTimer = setTimeout(() => {
+                saveJournalNote(activeDay, todayJournalInput.value);
+                showJournalSavedHint();
+            }, 350);
         };
     }
 }
@@ -508,8 +533,12 @@ function moveHabit(index, direction) {
     window.SupaSync?.triggerSync(currentYear, currentMonth);
 }
 
+let currentMonthJournal = {};
+let _journalDebounceTimer = null;
+
 function clearMonth() {
-    showConfirm(`Clear all habit checks, mood, and sleep entries for ${monthNames[currentMonth]} ${currentYear}?`, () => {
+    showConfirm(`Clear all habit checks, mood, sleep, and reflections for ${monthNames[currentMonth]} ${currentYear}?`, () => {
+        currentMonthJournal = {};
         localStorage.removeItem(getStorageKey());
         updateDashboard();
         window.SupaSync?.triggerSync(currentYear, currentMonth);
@@ -520,7 +549,7 @@ function clearMonth() {
 // STATE STORAGE
 // ============================================================
 function saveState() {
-    const state = { habits: {}, moodSleep: {} };
+    const state = { habits: {}, moodSleep: {}, journal: currentMonthJournal };
     document.querySelectorAll('.habit-checkbox').forEach(box => {
         if (box.checked) {
             state.habits[`${box.dataset.uuid}-${box.dataset.day}`] = true;
@@ -536,7 +565,8 @@ function saveState() {
 }
 
 function loadState() {
-    const saved = safeJSONParse(localStorage.getItem(getStorageKey()), { habits: {}, moodSleep: {} });
+    const saved = safeJSONParse(localStorage.getItem(getStorageKey()), { habits: {}, moodSleep: {}, journal: {} });
+    currentMonthJournal = saved.journal || {};
     document.querySelectorAll('.habit-checkbox').forEach(box => {
         box.checked = !!(saved.habits && saved.habits[`${box.dataset.uuid}-${box.dataset.day}`]);
     });
@@ -544,6 +574,7 @@ function loadState() {
         const val = saved.moodSleep && saved.moodSleep[`${select.dataset.metric}-${select.dataset.day}`];
         select.value = val !== undefined ? val : '';
     });
+    updateJournalIndicators();
 }
 
 // ============================================================
@@ -632,6 +663,11 @@ function buildGrids() {
 
     for (let d = 1; d <= daysInMonth; d++) {
         const th = document.createElement('th');
+        th.dataset.day = d;
+        th.style.cursor = 'pointer';
+        th.title = `Day ${d} — click to view or log daily reflection`;
+        th.addEventListener('click', () => openDayNoteModal(d));
+
         const dateObj = new Date(currentYear, currentMonth, d);
         const dow = dateObj.getDay();
         const isWeekend = dow === 0 || dow === 6;
@@ -640,9 +676,11 @@ function buildGrids() {
         if (isToday) th.classList.add('today-col');
         if (isWeekend) th.classList.add('weekend-col');
 
+        const hasNote = Boolean(currentMonthJournal[d] && currentMonthJournal[d].trim());
+
         th.innerHTML = `
             <div class="day-label">${dayNamesShort[dow]}</div>
-            <div class="date-label">${d}${isToday ? '<span class="today-indicator"></span>' : ''}</div>
+            <div class="date-label">${d}${isToday ? '<span class="today-indicator"></span>' : ''}${hasNote ? '<span class="date-has-note-dot" title="Daily reflection logged"></span>' : ''}</div>
         `;
         trDays.appendChild(th);
     }
@@ -1422,3 +1460,206 @@ function initCharts() {
         }
     });
 }
+
+// ============================================================
+// MICRO-JOURNAL & DAILY REFLECTION
+// ============================================================
+let modalActiveDay = null;
+
+function initJournal() {
+    updateJournalIndicators();
+}
+
+function showJournalSavedHint() {
+    const hint = document.getElementById('journalSavedHint');
+    if (!hint) return;
+    hint.textContent = 'Saved ✓';
+    hint.style.color = 'var(--success)';
+    setTimeout(() => {
+        hint.textContent = 'Auto-saved';
+        hint.style.color = '';
+    }, 1800);
+}
+
+function saveJournalNote(day, text) {
+    if (!text || !text.trim()) {
+        delete currentMonthJournal[day];
+    } else {
+        currentMonthJournal[day] = text.trim();
+    }
+    saveState();
+    updateJournalIndicators();
+}
+
+function insertJournalPrompt(prompt) {
+    const journalInput = document.getElementById('todayJournalInput');
+    if (!journalInput) return;
+    const curVal = journalInput.value;
+    if (curVal.length > 0 && !curVal.endsWith('\n')) {
+        journalInput.value += '\n' + prompt;
+    } else {
+        journalInput.value += prompt;
+    }
+    journalInput.focus();
+    journalInput.selectionStart = journalInput.selectionEnd = journalInput.value.length;
+
+    const today = new Date();
+    const isCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
+    const activeDay = isCurrentMonth ? today.getDate() : 1;
+
+    saveJournalNote(activeDay, journalInput.value);
+    showJournalSavedHint();
+}
+
+function updateJournalIndicators() {
+    document.querySelectorAll('#tableHeader th[data-day]').forEach(th => {
+        const d = parseInt(th.dataset.day);
+        const dateLabel = th.querySelector('.date-label');
+        if (!dateLabel) return;
+        let dot = dateLabel.querySelector('.date-has-note-dot');
+        const hasNote = Boolean(currentMonthJournal[d] && currentMonthJournal[d].trim());
+        if (hasNote && !dot) {
+            dot = document.createElement('span');
+            dot.className = 'date-has-note-dot';
+            dot.title = 'Daily reflection logged';
+            dateLabel.appendChild(dot);
+        } else if (!hasNote && dot) {
+            dot.remove();
+        }
+    });
+}
+
+function openDayNoteModal(day) {
+    modalActiveDay = day;
+    const overlay = document.getElementById('dayNoteModalOverlay');
+    const title = document.getElementById('dayNoteTitle');
+    const subtitle = document.getElementById('dayNoteSubtitle');
+    const input = document.getElementById('dayNoteModalInput');
+    if (!overlay || !input) return;
+
+    const dateObj = new Date(currentYear, currentMonth, day);
+    const dayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dateObj.getDay()];
+    if (title) title.textContent = `Daily Reflection · ${monthNames[currentMonth]} ${day}, ${currentYear}`;
+    if (subtitle) subtitle.textContent = `${dayName} — Win of the day & personal reflections`;
+    input.value = currentMonthJournal[day] || '';
+
+    overlay.classList.add('active');
+    input.focus();
+}
+
+function closeDayNoteModal() {
+    const overlay = document.getElementById('dayNoteModalOverlay');
+    if (overlay) overlay.classList.remove('active');
+    modalActiveDay = null;
+}
+
+function saveDayNoteFromModal() {
+    if (modalActiveDay === null) return;
+    const input = document.getElementById('dayNoteModalInput');
+    if (input) {
+        saveJournalNote(modalActiveDay, input.value);
+        if (currentViewMode === 'today') {
+            renderTodayFocus();
+        }
+    }
+    closeDayNoteModal();
+}
+
+// ============================================================
+// INTERACTIVE ONBOARDING TUTORIAL (Plays 1 time, with Skip & Auth)
+// ============================================================
+let currentOnboardStep = 1;
+const totalOnboardSteps = 3;
+
+function initOnboarding() {
+    const onboarded = localStorage.getItem('habitTracker_onboarded');
+    if (!onboarded) {
+        setTimeout(() => {
+            openOnboardingModal(false);
+        }, 500);
+    }
+}
+
+function openOnboardingModal(isManual = false) {
+    currentOnboardStep = 1;
+    showOnboardingStep(1);
+    const modal = document.getElementById('onboardingModalOverlay');
+    if (modal) modal.classList.add('active');
+}
+
+function closeOnboardingModal() {
+    const modal = document.getElementById('onboardingModalOverlay');
+    if (modal) modal.classList.remove('active');
+    localStorage.setItem('habitTracker_onboarded', 'true');
+}
+
+function skipOnboarding() {
+    closeOnboardingModal();
+}
+
+function nextOnboardingStep() {
+    if (currentOnboardStep < totalOnboardSteps) {
+        showOnboardingStep(currentOnboardStep + 1);
+    } else {
+        closeOnboardingModal();
+    }
+}
+
+function prevOnboardingStep() {
+    if (currentOnboardStep > 1) {
+        showOnboardingStep(currentOnboardStep - 1);
+    }
+}
+
+function showOnboardingStep(step) {
+    currentOnboardStep = step;
+
+    const badge = document.getElementById('onboardingStepBadge');
+    if (badge) badge.textContent = `Step ${step} of ${totalOnboardSteps}`;
+
+    for (let i = 1; i <= totalOnboardSteps; i++) {
+        const slide = document.getElementById(`onboardSlide${i}`);
+        const dot = document.getElementById(`onboardDot${i}`);
+        if (slide) slide.classList.toggle('hidden', i !== step);
+        if (dot) dot.classList.toggle('active', i === step);
+    }
+
+    const prevBtn = document.getElementById('onboardPrevBtn');
+    const nextBtn = document.getElementById('onboardNextBtn');
+
+    if (prevBtn) {
+        prevBtn.classList.toggle('hidden', step === 1);
+    }
+
+    if (nextBtn) {
+        if (step === totalOnboardSteps) {
+            nextBtn.textContent = 'Get Started ✦';
+        } else {
+            nextBtn.textContent = 'Next →';
+        }
+    }
+}
+
+function onboardOpenAuth() {
+    closeOnboardingModal();
+    const authBtn = document.getElementById('authOpenBtn');
+    if (authBtn) {
+        authBtn.click();
+    } else {
+        document.getElementById('authModalOverlay')?.classList.add('active');
+    }
+}
+
+// Global window assignments for onclick event attributes
+window.openOnboardingModal = openOnboardingModal;
+window.closeOnboardingModal = closeOnboardingModal;
+window.skipOnboarding = skipOnboarding;
+window.nextOnboardingStep = nextOnboardingStep;
+window.prevOnboardingStep = prevOnboardingStep;
+window.onboardOpenAuth = onboardOpenAuth;
+window.openDayNoteModal = openDayNoteModal;
+window.closeDayNoteModal = closeDayNoteModal;
+window.saveDayNoteFromModal = saveDayNoteFromModal;
+window.insertJournalPrompt = insertJournalPrompt;
+window.getCurrentJournal = () => currentMonthJournal;
+

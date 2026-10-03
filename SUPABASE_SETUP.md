@@ -49,12 +49,21 @@ create table public.wellness_logs (
   primary key (user_id, log_date)
 );
 
--- 4. Enable Row Level Security (RLS) so each user only accesses their own data
+-- 4. Daily Micro-Journal & Reflections
+create table public.journal_logs (
+  user_id     uuid not null default auth.uid() references auth.users on delete cascade,
+  log_date    date not null,
+  entry_text  text not null,
+  primary key (user_id, log_date)
+);
+
+-- 5. Enable Row Level Security (RLS) so each user only accesses their own data
 alter table public.habits enable row level security;
 alter table public.habit_logs enable row level security;
 alter table public.wellness_logs enable row level security;
+alter table public.journal_logs enable row level security;
 
--- 5. Access Policies
+-- 6. Access Policies
 create policy "own_habits" on public.habits
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -62,6 +71,9 @@ create policy "own_logs" on public.habit_logs
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "own_wellness" on public.wellness_logs
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "own_journal" on public.journal_logs
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 ```
 

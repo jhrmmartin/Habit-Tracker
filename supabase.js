@@ -66,7 +66,7 @@
         const c = _getClient(), user = await _getUser();
         if (!c || !user) return;
 
-        const stored = _json(localStorage.getItem(`habitData_${year}_${month}`), { habits: {}, moodSleep: {} });
+        const stored = _json(localStorage.getItem(`habitData_${year}_${month}`), { habits: {}, moodSleep: {}, journal: {} });
 
         // ── habit_logs rows ──
         const logRows = [];
@@ -93,12 +93,32 @@
         }
         const wellRows = Object.values(wellMap);
 
+        // ── journal_logs rows ──
+        const journalRows = [];
+        for (const [dayKey, entryText] of Object.entries(stored.journal || {})) {
+            const day = parseInt(dayKey);
+            if (isNaN(day) || !entryText) continue;
+            journalRows.push({
+                user_id: user.id,
+                log_date: _toDate(year, month, day),
+                entry_text: entryText
+            });
+        }
+
         const tasks = [];
         if (logRows.length)  tasks.push(c.from('habit_logs').upsert(logRows,  { onConflict: 'user_id,habit_id,log_date' }));
         if (wellRows.length) tasks.push(c.from('wellness_logs').upsert(wellRows, { onConflict: 'user_id,log_date' }));
 
         const results = await Promise.all(tasks);
         for (const r of results) { if (r.error) throw r.error; }
+
+        if (journalRows.length) {
+            try {
+                await c.from('journal_logs').upsert(journalRows, { onConflict: 'user_id,log_date' });
+            } catch (_) {
+                // Non-blocking: table may not be created yet in user's Supabase instance
+            }
+        }
     }
 
     async function _deleteHabitFromCloud(habitId) {
@@ -135,14 +155,25 @@
         ]);
         if (logsRes.error) throw logsRes.error;
         if (wellRes.error) throw wellRes.error;
-        return { habitLogs: logsRes.data, wellnessLogs: wellRes.data };
+
+        let journalLogs = [];
+        try {
+            const jRes = await c.from('journal_logs').select('log_date,entry_text')
+                .eq('user_id', user.id).gte('log_date', start).lte('log_date', end);
+            if (!jRes.error && jRes.data) {
+                journalLogs = jRes.data;
+            }
+        } catch (_) {}
+
+        return { habitLogs: logsRes.data, wellnessLogs: wellRes.data, journalLogs };
     }
 
     // ── Apply pulled cloud data → localStorage ───────────────
 
     function _applyMonthData(year, month, cloud) {
         if (!cloud) return;
-        const state = { habits: {}, moodSleep: {} };
+        const existing = _json(localStorage.getItem(`habitData_${year}_${month}`), { habits: {}, moodSleep: {}, journal: {} });
+        const state = { habits: {}, moodSleep: {}, journal: existing.journal || {} };
         for (const log of cloud.habitLogs || []) {
             if (!log.completed) continue;
             const day = parseInt(log.log_date.split('-')[2]);
@@ -152,6 +183,11 @@
             const day = parseInt(w.log_date.split('-')[2]);
             if (w.mood != null)        state.moodSleep[`Mood-${day}`]           = String(w.mood);
             if (w.sleep_hours != null) state.moodSleep[`Hours of Sleep-${day}`] = String(w.sleep_hours);
+        }
+        for (const j of cloud.journalLogs || []) {
+            if (!j.entry_text) continue;
+            const day = parseInt(j.log_date.split('-')[2]);
+            state.journal[day] = j.entry_text;
         }
         localStorage.setItem(`habitData_${year}_${month}`, JSON.stringify(state));
     }
@@ -180,9 +216,10 @@
             }
 
             // ── Month Data ──
-            const cloudMonth = await _pullMonthData(year, month);
             const hasCloudData = cloudMonth &&
-                (cloudMonth.habitLogs.length > 0 || cloudMonth.wellnessLogs.length > 0);
+                ((cloudMonth.habitLogs && cloudMonth.habitLogs.length > 0) ||
+                 (cloudMonth.wellnessLogs && cloudMonth.wellnessLogs.length > 0) ||
+                 (cloudMonth.journalLogs && cloudMonth.journalLogs.length > 0));
 
             if (hasCloudData) {
                 _applyMonthData(year, month, cloudMonth);
