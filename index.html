@@ -141,6 +141,18 @@
 
                 <div class="toolbar" role="toolbar" aria-label="Habit tracker controls">
 
+                    <!-- View Mode Toggle (Grid vs Today Focus) -->
+                    <div class="view-mode-toggle" role="tablist" aria-label="Switch between Month Grid and Today Focus">
+                        <button id="viewGridBtn" class="view-btn active" role="tab" aria-selected="true" onclick="setViewMode('grid')">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            <span>Grid</span>
+                        </button>
+                        <button id="viewTodayBtn" class="view-btn" role="tab" aria-selected="false" onclick="setViewMode('today')">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span>Today</span>
+                        </button>
+                    </div>
+
                     <select id="monthSelect" class="control-select" aria-label="Select month"></select>
                     <select id="yearSelect"  class="control-select" aria-label="Select year"></select>
                     <select id="themeSelect" class="control-select" aria-label="Select visual theme">
@@ -211,7 +223,7 @@
             </header>
 
             <!-- Daily Progress Chart -->
-            <section class="panel">
+            <section class="panel" id="chartPanel">
                 <div class="panel-header">
                     <h2 class="panel-title">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -228,7 +240,7 @@
             </section>
 
             <!-- Habit Tracker Grid -->
-            <section class="panel">
+            <section class="panel" id="gridPanel">
                 <div class="panel-header">
                     <h2 class="panel-title" id="gridTitle">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -262,6 +274,75 @@
                     </button>
                 </div>
                 <div id="errorMessage" class="error-msg" role="alert"></div>
+            </section>
+
+            <!-- Zen / Today Focus View -->
+            <section class="panel today-focus-section hidden" id="todayPanel">
+                <div class="today-banner">
+                    <div class="today-banner-top">
+                        <div class="today-date-heading" id="todayDateHeading">Today's Focus</div>
+                        <div class="today-score-pill" id="todayScorePill">0 / 0 completed</div>
+                    </div>
+                    <div class="today-progress-bar">
+                        <div class="today-progress-fill" id="todayProgressFill" style="width:0%"></div>
+                    </div>
+                </div>
+
+                <div class="today-habits-list" id="todayHabitsList"></div>
+
+                <!-- Today Quick Wellness Check-in -->
+                <div class="today-wellness-card">
+                    <div class="today-wellness-title">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <span>Today's Wellness Check-in</span>
+                    </div>
+                    <div class="today-wellness-row">
+                        <div class="today-wellness-field">
+                            <label for="todayMoodSelect">Mood (1–10)</label>
+                            <select id="todayMoodSelect" class="control-select">
+                                <option value="">Log Mood</option>
+                                <option value="1">1 · Lowest</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5 · Neutral</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8 · Good</option>
+                                <option value="9">9</option>
+                                <option value="10">10 · Peak</option>
+                            </select>
+                        </div>
+                        <div class="today-wellness-field">
+                            <label for="todaySleepSelect">Hours of Sleep</label>
+                            <select id="todaySleepSelect" class="control-select">
+                                <option value="">Log Sleep</option>
+                                <option value="4">4 hrs</option>
+                                <option value="5">5 hrs</option>
+                                <option value="6">6 hrs</option>
+                                <option value="7">7 hrs</option>
+                                <option value="8">8 hrs</option>
+                                <option value="9">9 hrs</option>
+                                <option value="10">10+ hrs</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add habit inside Today view too -->
+                <div class="add-habit-container">
+                    <input type="text" id="newHabitInputToday"
+                           placeholder="Add a new habit… (e.g. Read 20 mins, Hydrate, Journaling)"
+                           aria-label="New habit title">
+                    <button onclick="addNewHabitFromToday()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5"  y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add
+                    </button>
+                </div>
+                <div id="errorMessageToday" class="error-msg" role="alert"></div>
             </section>
 
         </main>

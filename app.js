@@ -204,12 +204,20 @@ window.onload = () => {
     initGreeting();
     initCalendarSettings();
     initCharts();
+    initViewMode();
     applyTheme(localStorage.getItem('habitTracker_theme') || 'obsidian');
 
     const input = document.getElementById('newHabitInput');
     if (input) {
         input.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') addNewHabit();
+        });
+    }
+
+    const inputToday = document.getElementById('newHabitInputToday');
+    if (inputToday) {
+        inputToday.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addNewHabitFromToday();
         });
     }
 
@@ -224,6 +232,171 @@ window.onload = () => {
 
     updateDashboard();
 };
+
+// ============================================================
+// VIEW MODE (MONTH GRID vs TODAY FOCUS)
+// ============================================================
+let currentViewMode = 'grid';
+
+function setViewMode(mode) {
+    currentViewMode = mode;
+    localStorage.setItem('habitTracker_viewMode', mode);
+
+    const isToday = mode === 'today';
+    document.getElementById('viewGridBtn')?.classList.toggle('active', !isToday);
+    document.getElementById('viewTodayBtn')?.classList.toggle('active', isToday);
+
+    document.getElementById('chartPanel')?.classList.toggle('hidden', isToday);
+    document.getElementById('gridPanel')?.classList.toggle('hidden', isToday);
+    document.getElementById('todayPanel')?.classList.toggle('hidden', !isToday);
+
+    if (isToday) {
+        renderTodayFocus();
+    }
+}
+
+function initViewMode() {
+    const saved = localStorage.getItem('habitTracker_viewMode');
+    // On small mobile screens (width <= 640px) with no prior saved preference, start in Today Focus mode
+    const defaultMode = (window.innerWidth <= 640 && !saved) ? 'today' : (saved || 'grid');
+    setViewMode(defaultMode);
+}
+
+function renderTodayFocus() {
+    const today = new Date();
+    const isCurrentMonth = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
+    const activeDay = isCurrentMonth ? today.getDate() : 1;
+
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const headingDate = isCurrentMonth 
+        ? `${days[today.getDay()]}, ${months[today.getMonth()]} ${today.getDate()}`
+        : `${months[currentMonth]} 1, ${currentYear}`;
+    
+    const headingEl = document.getElementById('todayDateHeading');
+    if (headingEl) headingEl.textContent = headingDate;
+
+    const listEl = document.getElementById('todayHabitsList');
+    if (!listEl) return;
+
+    if (!habits || habits.length === 0) {
+        listEl.innerHTML = `
+            <div style="text-align:center; padding:32px 16px; color:var(--text-muted); font-size:0.875rem;">
+                No habits added yet. Create your first habit below to start your streak!
+            </div>
+        `;
+        document.getElementById('todayScorePill').textContent = '0 / 0 completed';
+        document.getElementById('todayProgressFill').style.width = '0%';
+        return;
+    }
+
+    let completedToday = 0;
+
+    listEl.innerHTML = habits.map(h => {
+        const box = document.querySelector(`.habit-checkbox[data-uuid="${h.id}"][data-day="${activeDay}"]`);
+        const isCompleted = box ? box.checked : false;
+        if (isCompleted) completedToday++;
+
+        // Get active streak from telemetry
+        const streakEl = document.getElementById(`ana-curr-${h.id}`);
+        const streak = streakEl ? parseInt(streakEl.textContent) || 0 : 0;
+
+        return `
+            <div class="today-habit-card ${isCompleted ? 'completed' : ''}" onclick="toggleTodayHabit('${h.id}', ${activeDay})">
+                <div class="today-checkbox-touch" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="today-habit-info">
+                    <span class="today-habit-title">${sanitizeHTML(h.name)}</span>
+                    <div class="today-habit-meta">
+                        ${streak > 0 ? `
+                            <span class="today-streak-badge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                                ${streak} day streak
+                            </span>
+                        ` : '<span style="font-size:0.6875rem;">Ready to check in</span>'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Update progress pill and bar
+    const total = habits.length;
+    const pct = total > 0 ? Math.round((completedToday / total) * 100) : 0;
+    const scorePill = document.getElementById('todayScorePill');
+    if (scorePill) {
+        if (completedToday === total && total > 0) {
+            scorePill.textContent = `All ${total} Done! ✨`;
+        } else {
+            scorePill.textContent = `${completedToday} / ${total} completed (${pct}%)`;
+        }
+    }
+    const progFill = document.getElementById('todayProgressFill');
+    if (progFill) progFill.style.width = `${pct}%`;
+
+    // Sync Today Mood & Sleep Selects
+    const moodSelectInGrid = document.querySelector(`.mood-sleep-select[data-metric="Mood"][data-day="${activeDay}"]`);
+    const sleepSelectInGrid = document.querySelector(`.mood-sleep-select[data-metric="Hours of Sleep"][data-day="${activeDay}"]`);
+
+    const todayMood = document.getElementById('todayMoodSelect');
+    const todaySleep = document.getElementById('todaySleepSelect');
+
+    if (todayMood && moodSelectInGrid) {
+        todayMood.value = moodSelectInGrid.value || '';
+        todayMood.onchange = () => {
+            moodSelectInGrid.value = todayMood.value;
+            saveState();
+            calculateStats();
+        };
+    }
+
+    if (todaySleep && sleepSelectInGrid) {
+        todaySleep.value = sleepSelectInGrid.value || '';
+        todaySleep.onchange = () => {
+            sleepSelectInGrid.value = todaySleep.value;
+            saveState();
+            calculateStats();
+        };
+    }
+}
+
+function toggleTodayHabit(habitId, day) {
+    const box = document.querySelector(`.habit-checkbox[data-uuid="${habitId}"][data-day="${day}"]`);
+    if (box) {
+        box.checked = !box.checked;
+        saveState();
+        calculateStats();
+        renderTodayFocus();
+    }
+}
+
+function addNewHabitFromToday() {
+    const input = document.getElementById('newHabitInputToday');
+    const msg = document.getElementById('errorMessageToday');
+    const newName = input ? input.value.trim() : '';
+
+    if (!newName) return;
+
+    const exists = habits.some(h => h.name.toLowerCase() === newName.toLowerCase());
+    if (exists) {
+        if (msg) {
+            msg.textContent = "A habit with this name already exists.";
+            setTimeout(() => msg.textContent = "", 3000);
+        }
+        return;
+    }
+
+    habits.push({ id: generateUUID(), name: newName });
+    localStorage.setItem('myCustomHabits_v3', JSON.stringify(habits));
+    if (input) input.value = '';
+    if (msg) msg.textContent = '';
+    updateDashboard();
+    renderTodayFocus();
+    window.SupaSync?.triggerSync(currentYear, currentMonth);
+}
 
 function initGreeting() {
     const now = new Date();
@@ -250,6 +423,9 @@ function updateDashboard() {
     buildGrids();
     loadState();
     calculateStats();
+    if (currentViewMode === 'today') {
+        renderTodayFocus();
+    }
 }
 
 // Global hooks for Supabase cloud sync layer
