@@ -138,6 +138,13 @@ function updateDashboard() {
     calculateStats();
 }
 
+// Global hooks for Supabase cloud sync layer
+window.getTrackerYear = () => currentYear;
+window.getTrackerMonth = () => currentMonth;
+window.getHabits = () => habits;
+window.setHabits = (newHabits) => { habits = newHabits; };
+window.updateDashboard = updateDashboard;
+
 // ============================================================
 // HABIT ACTIONS
 // ============================================================
@@ -160,6 +167,7 @@ function addNewHabit() {
     input.value = '';
     msg.textContent = '';
     updateDashboard();
+    window.SupaSync?.triggerSync(currentYear, currentMonth);
 }
 
 function deleteHabit(id) {
@@ -194,6 +202,8 @@ function deleteHabit(id) {
         });
 
         updateDashboard();
+        window.SupaSync?.deleteHabitFromCloud(id);
+        window.SupaSync?.triggerSync(currentYear, currentMonth);
     });
 }
 
@@ -205,12 +215,14 @@ function moveHabit(index, direction) {
     }
     localStorage.setItem('myCustomHabits_v3', JSON.stringify(habits));
     updateDashboard();
+    window.SupaSync?.triggerSync(currentYear, currentMonth);
 }
 
 function clearMonth() {
     showConfirm(`Clear all habit checks, mood, and sleep entries for ${monthNames[currentMonth]} ${currentYear}?`, () => {
         localStorage.removeItem(getStorageKey());
         updateDashboard();
+        window.SupaSync?.triggerSync(currentYear, currentMonth);
     });
 }
 
@@ -230,6 +242,7 @@ function saveState() {
         }
     });
     localStorage.setItem(getStorageKey(), JSON.stringify(state));
+    window.SupaSync?.triggerSync(currentYear, currentMonth);
 }
 
 function loadState() {
@@ -268,10 +281,12 @@ function initCalendarSettings() {
     mSelect.addEventListener('change', (e) => {
         currentMonth = parseInt(e.target.value);
         updateDashboard();
+        window.SupaSync?.onMonthChange?.(currentYear, currentMonth);
     });
     ySelect.addEventListener('change', (e) => {
         currentYear = parseInt(e.target.value);
         updateDashboard();
+        window.SupaSync?.onMonthChange?.(currentYear, currentMonth);
     });
 }
 

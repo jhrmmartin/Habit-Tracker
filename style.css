@@ -793,6 +793,204 @@ select.mood-sleep-select option {
 }
 
 /* ============================================================
+   SUPABASE CLOUD SYNC & AUTH UI
+   ============================================================ */
+.hidden {
+    display: none !important;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: var(--text-inverse);
+    border: 1px solid transparent;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn-cloud {
+    border-color: var(--accent-border);
+    color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+.btn-cloud:hover {
+    background: rgba(229, 152, 56, 0.2);
+    border-color: var(--accent);
+}
+
+.sync-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.sync-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: var(--radius-pill);
+    background: var(--text-muted);
+}
+
+.sync-dot.synced {
+    background: var(--success);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
+}
+
+.sync-dot.syncing {
+    background: var(--accent);
+    animation: pulseSync 1s infinite alternate;
+}
+
+.sync-dot.error {
+    background: var(--danger);
+}
+
+.sync-dot.offline {
+    background: var(--text-muted);
+}
+
+@keyframes pulseSync {
+    from { opacity: 0.4; }
+    to { opacity: 1; }
+}
+
+.sync-text {
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 8px 3px 4px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+}
+
+.user-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-subtle);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.user-email-text {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.auth-modal-box {
+    max-width: 380px;
+}
+
+.modal-subtitle {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin-bottom: 18px;
+}
+
+.auth-form-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    text-align: left;
+}
+
+.form-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.form-input {
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    outline: none;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.form-input:focus-visible {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.auth-error {
+    color: var(--danger);
+    font-size: 0.75rem;
+    min-height: 16px;
+    text-align: left;
+}
+
+.auth-btn-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.auth-switch-row {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
+    transition: color var(--duration-micro);
+}
+
+.link-btn:hover {
+    text-decoration: underline;
+}
+
+.link-btn:focus-visible {
+    outline: 2px solid var(--accent);
+}
+
+
+/* ============================================================
    RESPONSIVE DESIGN
    ============================================================ */
 @media (max-width: 1200px) {
