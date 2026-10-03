@@ -490,96 +490,110 @@
 
                 <div class="toolbar" role="toolbar" aria-label="Habit tracker controls">
 
-                    <!-- View Mode Toggle (Grid vs Today Focus) -->
-                    <div class="view-mode-toggle" role="tablist" aria-label="Switch between Month Grid and Today Focus">
-                        <button id="viewGridBtn" class="view-btn active" role="tab" aria-selected="true" onclick="setViewMode('grid')">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                            <span>Grid</span>
-                        </button>
-                        <button id="viewTodayBtn" class="view-btn" role="tab" aria-selected="false" onclick="setViewMode('today')">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            <span>Today</span>
-                        </button>
+                    <!-- Left: View Mode Toggle & Date Navigator Group -->
+                    <div class="toolbar-group toolbar-group-left">
+                        <div class="view-mode-toggle" role="tablist" aria-label="Switch between Month Grid and Today Focus">
+                            <button id="viewGridBtn" class="view-btn active" role="tab" aria-selected="true" onclick="setViewMode('grid')">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                                <span>Grid</span>
+                            </button>
+                            <button id="viewTodayBtn" class="view-btn" role="tab" aria-selected="false" onclick="setViewMode('today')">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                <span>Today</span>
+                            </button>
+                        </div>
+
+                        <div class="date-select-group">
+                            <select id="monthSelect" class="control-select" aria-label="Select month"></select>
+                            <select id="yearSelect"  class="control-select" aria-label="Select year"></select>
+                        </div>
                     </div>
 
-                    <select id="monthSelect" class="control-select" aria-label="Select month"></select>
-                    <select id="yearSelect"  class="control-select" aria-label="Select year"></select>
-                    <select id="themeSelect" class="control-select" aria-label="Select visual theme">
-                        <option value="obsidian">✦ Obsidian</option>
-                        <option value="forest">🌲 Forest</option>
-                        <option value="nordic">❄️ Nordic</option>
-                        <option value="espresso">☕ Espresso</option>
-                        <option value="dusk">🌙 Plum</option>
-                        <option value="paper">📜 Paper (Light)</option>
-                    </select>
-
-                    <button class="btn" onclick="exportCSV()" aria-label="Export habit data to CSV">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Export CSV
-                    </button>
-
-                    <button class="btn btn-ghost" onclick="startInteractiveTour()" aria-label="Open Interactive Guide" title="Interactive hands-on feature guide">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        Guide
-                    </button>
-
-                    <button class="btn btn-ghost" onclick="openCustomizeModal('general')" aria-label="Customize workspace appearance" title="Customize covers, icons, fonts & wallpaper">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-                        </svg>
-                        Customize
-                    </button>
-
-                    <button class="btn btn-receipt" onclick="openReceiptModal()" aria-label="Generate Monthly Discipline Receipt">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
-                            <path d="M16 8h-8"/>
-                            <path d="M16 12h-8"/>
-                            <path d="M13 16h-5"/>
-                        </svg>
-                        Receipt
-                    </button>
-
-                    <!-- Sync status pill (visible when signed in, clickable to force sync) -->
-                    <div id="syncStatusIndicator" class="sync-indicator hidden" aria-live="polite" role="button" tabindex="0" title="Click to sync now with cloud">
-                        <span id="syncDot" class="sync-dot synced"></span>
-                        <span id="syncStatusText" class="sync-text">Synced ✓</span>
-                    </div>
-
-                    <!-- User badge (visible when signed in) -->
-                    <div id="userBadge" class="user-badge hidden">
-                        <div class="user-avatar" id="userInitials" aria-hidden="true">--</div>
-                        <span id="userEmailText" class="user-email-text">user@email.com</span>
-                        <button class="icon-btn" id="authSignOutBtn" title="Sign out" aria-label="Sign out">
-                            <!-- Log-out icon -->
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                                <polyline points="16 17 21 12 16 7"/>
-                                <line x1="21" y1="12" x2="9" y2="12"/>
+                    <!-- Right: Quick Tools, More (•••) Menu & Unified Account -->
+                    <div class="toolbar-group toolbar-group-right">
+                        <button class="btn btn-ghost" onclick="openCustomizeModal('general')" aria-label="Customize workspace appearance" title="Customize covers, icons, fonts & wallpaper">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
                             </svg>
+                            <span>Customize</span>
                         </button>
+
+                        <button class="btn btn-receipt" onclick="openReceiptModal()" aria-label="Generate Monthly Discipline Receipt">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
+                                <path d="M16 8h-8"/>
+                                <path d="M16 12h-8"/>
+                                <path d="M13 16h-5"/>
+                            </svg>
+                            <span>Receipt</span>
+                        </button>
+
+                        <!-- More Options (•••) Dropdown Menu -->
+                        <div class="more-menu-wrapper" id="moreMenuWrapper">
+                            <button id="moreOptionsBtn" class="btn btn-ghost more-menu-btn" onclick="toggleMoreOptionsMenu(event)" aria-label="More actions and settings" aria-expanded="false" title="More options">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <circle cx="5" cy="12" r="2"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                    <circle cx="19" cy="12" r="2"/>
+                                </svg>
+                            </button>
+                            <div id="moreMenuDropdown" class="more-dropdown-panel hidden" role="menu" aria-label="More options menu">
+                                <div class="dropdown-section-title">TOOLS &amp; ASSISTANCE</div>
+                                <button class="dropdown-item" role="menuitem" onclick="startInteractiveTour(); closeMoreOptionsMenu();">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    <span>Interactive Guide</span>
+                                </button>
+                                <button class="dropdown-item" role="menuitem" onclick="exportCSV(); closeMoreOptionsMenu();">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span>Export CSV</span>
+                                </button>
+                                <div class="dropdown-theme-row">
+                                    <div class="dropdown-theme-label">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z"/></svg>
+                                        <span>Theme</span>
+                                    </div>
+                                    <select id="themeSelect" class="control-select dropdown-theme-select" aria-label="Select visual theme">
+                                        <option value="obsidian">✦ Obsidian</option>
+                                        <option value="forest">🌲 Forest</option>
+                                        <option value="nordic">❄️ Nordic</option>
+                                        <option value="espresso">☕ Espresso</option>
+                                        <option value="dusk">🌙 Plum</option>
+                                        <option value="paper">📜 Paper (Light)</option>
+                                    </select>
+                                </div>
+                                <hr class="dropdown-divider">
+                                <button class="dropdown-item dropdown-item-danger" role="menuitem" onclick="clearMonth(); closeMoreOptionsMenu();">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                    <span>Clear Month</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Cloud Sync button (hidden when signed in) -->
+                        <button class="btn btn-cloud" id="authOpenBtn" aria-label="Sign in to enable cloud sync">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+                            </svg>
+                            <span>Cloud Sync</span>
+                        </button>
+
+                        <!-- Unified User Account & Sync Pill (visible when signed in) -->
+                        <div id="userBadge" class="user-badge unified-account-pill hidden" title="Account & Sync status">
+                            <div class="user-avatar" id="userInitials" aria-hidden="true">--</div>
+                            <span id="userEmailText" class="user-email-text">user@email.com</span>
+                            <div id="syncStatusIndicator" class="sync-indicator-mini" role="button" tabindex="0" title="Click to sync now with cloud">
+                                <span id="syncDot" class="sync-dot synced"></span>
+                                <span id="syncStatusText" class="sync-text">Synced ✓</span>
+                            </div>
+                            <button class="icon-btn auth-signout-btn" id="authSignOutBtn" title="Sign out" aria-label="Sign out">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                    <polyline points="16 17 21 12 16 7"/>
+                                    <line x1="21" y1="12" x2="9" y2="12"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-
-                    <!-- Cloud Sync button (hidden when signed in) -->
-                    <button class="btn btn-cloud" id="authOpenBtn" aria-label="Sign in to enable cloud sync">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
-                        </svg>
-                        Cloud Sync
-                    </button>
-
-                    <button class="btn btn-danger" onclick="clearMonth()" aria-label="Clear all habit data for selected month">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                            <path d="M10 11v6"/><path d="M14 11v6"/>
-                        </svg>
-                        Clear Month
-                    </button>
                 </div>
             </header>
 

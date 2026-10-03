@@ -251,9 +251,17 @@ window.onload = () => {
             closeRenameJournalModal();
             closeCustomizeModal();
             closeHabitIconPicker();
+            closeMoreOptionsMenu();
         } else if (isTourActive) {
             if (e.key === 'ArrowRight') nextTourStep();
             if (e.key === 'ArrowLeft') prevTourStep();
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('moreMenuWrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            closeMoreOptionsMenu();
         }
     });
 
@@ -261,6 +269,26 @@ window.onload = () => {
     initJournal();
     initOnboarding();
 };
+
+// ============================================================
+// TOOLBAR MORE (•••) MENU TOGGLE
+// ============================================================
+function toggleMoreOptionsMenu(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('moreMenuDropdown');
+    const btn = document.getElementById('moreOptionsBtn');
+    if (!dropdown) return;
+    const isHidden = dropdown.classList.contains('hidden');
+    dropdown.classList.toggle('hidden', !isHidden);
+    if (btn) btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+}
+
+function closeMoreOptionsMenu() {
+    const dropdown = document.getElementById('moreMenuDropdown');
+    const btn = document.getElementById('moreOptionsBtn');
+    if (dropdown) dropdown.classList.add('hidden');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
 
 // ============================================================
 // VIEW MODE (MONTH GRID vs TODAY FOCUS)
@@ -2590,6 +2618,8 @@ window.navigateGridJournalDay = navigateGridJournalDay;
 window.jumpGridJournalToToday = jumpGridJournalToToday;
 window.focusGridJournalDay = focusGridJournalDay;
 window.switchGridJournalDay = switchGridJournalDay;
+window.toggleMoreOptionsMenu = toggleMoreOptionsMenu;
+window.closeMoreOptionsMenu = closeMoreOptionsMenu;
 
 // ============================================================
 // NOTION-STYLE WORKSPACE CUSTOMIZER & AESTHETICS SYSTEM

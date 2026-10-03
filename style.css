@@ -370,8 +370,36 @@ body::before {
 .toolbar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+}
+
+.toolbar-group-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toolbar-group-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.date-select-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* Dropdowns & Buttons */
@@ -1058,6 +1086,16 @@ select.mood-sleep-select option {
     font-size: 0.75rem;
 }
 
+.unified-account-pill {
+    padding: 3px 6px 3px 5px;
+    gap: 7px;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.unified-account-pill:hover {
+    border-color: var(--border-strong);
+}
+
 .user-avatar {
     width: 22px;
     height: 22px;
@@ -1071,15 +1109,206 @@ select.mood-sleep-select option {
     font-size: 0.65rem;
     font-weight: 700;
     font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
 }
 
 .user-email-text {
-    max-width: 140px;
+    max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--text-secondary);
     font-weight: 500;
+    font-size: 0.75rem;
+}
+
+.sync-indicator-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-canvas);
+    border: 1px solid var(--border-subtle);
+    font-size: 0.6875rem;
+    cursor: pointer;
+    user-select: none;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.sync-indicator-mini:hover {
+    border-color: var(--accent-border);
+    background: var(--accent-subtle);
+}
+
+.auth-signout-btn {
+    color: var(--text-muted);
+    padding: 3px 5px;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.auth-signout-btn:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.12);
+}
+
+/* ============================================================
+   MORE OPTIONS (•••) DROPDOWN MENU
+   ============================================================ */
+.more-menu-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.more-menu-btn {
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.more-menu-btn:hover,
+.more-menu-btn[aria-expanded="true"] {
+    color: var(--text-primary);
+    background: var(--bg-surface-elevated);
+    border-color: var(--border-strong);
+}
+
+.more-dropdown-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 210px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 1000;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    animation: dropdownFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.more-dropdown-panel.hidden {
+    display: none !important;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-section-title {
+    font-size: 0.625rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 6px 8px 4px 8px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: left;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.dropdown-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.dropdown-item svg {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: color var(--duration-micro);
+}
+
+.dropdown-item:hover svg {
+    color: var(--accent);
+}
+
+.dropdown-theme-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+}
+
+.dropdown-theme-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.dropdown-theme-label svg {
+    color: var(--text-muted);
+}
+
+.dropdown-theme-select {
+    font-size: 0.75rem;
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
+    max-width: 110px;
+}
+
+.dropdown-divider {
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    margin: 4px 0;
+}
+
+.dropdown-item-danger {
+    color: var(--danger);
+}
+
+.dropdown-item-danger svg {
+    color: var(--danger);
+}
+
+.dropdown-item-danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+}
+
+.dropdown-item-danger:hover svg {
+    color: var(--danger);
 }
 
 .auth-modal-box {
@@ -2296,16 +2525,42 @@ select.mood-sleep-select option {
     .app-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 12px;
     }
     .toolbar {
         width: 100%;
         justify-content: space-between;
+        gap: 10px;
+    }
+    .toolbar-group-left {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .toolbar-group-right {
+        width: 100%;
+        justify-content: flex-end;
+        gap: 6px;
     }
     .right-column {
         grid-template-columns: 1fr;
     }
     .sticky-left {
         min-width: 160px;
+    }
+}
+
+@media (max-width: 480px) {
+    .user-email-text {
+        display: none;
+    }
+    .unified-account-pill {
+        padding: 2px 5px;
+    }
+    .toolbar-group-right .btn span {
+        display: none;
+    }
+    .toolbar-group-right .btn {
+        padding: 7px 9px;
     }
 }
 
