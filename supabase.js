@@ -210,6 +210,8 @@
             const theme = window.getTheme ? window.getTheme() : (localStorage.getItem('habitTracker_theme') || 'obsidian');
             const journalTitle = window.getJournalTitle ? window.getJournalTitle() : (localStorage.getItem('habitTracker_journalTitle') || 'Daily Reflection & Win');
             const journalPills = window.getJournalPills ? window.getJournalPills() : _json(localStorage.getItem('habitTracker_journalPills_v1'), null);
+            const notionWorkspace = window.getNotionWorkspace ? window.getNotionWorkspace() : _json(localStorage.getItem('notion_workspace_v1'), null);
+            const habitIcons = window.getHabitIconsMap ? window.getHabitIconsMap() : null;
 
             const year = window.getTrackerYear ? window.getTrackerYear() : new Date().getFullYear();
             const month = window.getTrackerMonth ? window.getTrackerMonth() : new Date().getMonth();
@@ -220,6 +222,8 @@
                     theme,
                     journalTitle,
                     journalPills,
+                    notionWorkspace,
+                    habitIcons,
                     [`journal_${year}_${month}`]: stored.journal || {},
                     lastSyncedAt: new Date().toISOString()
                 }
@@ -324,6 +328,12 @@
         if (meta.journalPills && typeof window.setJournalPills === 'function') {
             window.setJournalPills(meta.journalPills);
         }
+        if (meta.notionWorkspace && typeof window.setNotionWorkspace === 'function') {
+            window.setNotionWorkspace(meta.notionWorkspace);
+        }
+        if (meta.habitIcons && typeof window.applyHabitIconsMap === 'function') {
+            window.applyHabitIconsMap(meta.habitIcons);
+        }
 
         // Restore journal from metadata if database table journal_logs wasn't available
         const year = window.getTrackerYear ? window.getTrackerYear() : new Date().getFullYear();
@@ -357,7 +367,13 @@
             // 1. Habits
             const cloudHabits = await _pullHabits();
             if (cloudHabits && cloudHabits.length > 0) {
-                const parsed = cloudHabits.map(h => ({ id: h.id, name: h.name }));
+                const metaIcons = (user.user_metadata && user.user_metadata.habitIcons) || {};
+                const localMap = new Map(localHabits.map(h => [h.id, h]));
+                const parsed = cloudHabits.map(h => ({
+                    id: h.id,
+                    name: h.name,
+                    icon: metaIcons[h.id] || (localMap.get(h.id) && localMap.get(h.id).icon) || undefined
+                }));
                 localStorage.setItem('myCustomHabits_v3', JSON.stringify(parsed));
                 if (window.setHabits) window.setHabits(parsed);
             } else if (localHabits.length > 0) {

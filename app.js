@@ -202,6 +202,7 @@ function updateChartsForTheme(themeKey) {
 // ============================================================
 window.onload = () => {
     initTheme();
+    initNotionWorkspace();
     initGreeting();
     initCalendarSettings();
     initCharts();
@@ -235,6 +236,12 @@ window.onload = () => {
     document.getElementById('renameJournalModalOverlay')?.addEventListener('click', (e) => {
         if (e.target.id === 'renameJournalModalOverlay') closeRenameJournalModal();
     });
+    document.getElementById('customizeLayoutModalOverlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'customizeLayoutModalOverlay') closeCustomizeModal();
+    });
+    document.getElementById('habitIconPickerModalOverlay')?.addEventListener('click', (e) => {
+        if (e.target.id === 'habitIconPickerModalOverlay') closeHabitIconPicker();
+    });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -242,6 +249,8 @@ window.onload = () => {
             closeOnboardingModal();
             closeDayNoteModal();
             closeRenameJournalModal();
+            closeCustomizeModal();
+            closeHabitIconPicker();
         } else if (document.getElementById('onboardingModalOverlay')?.classList.contains('active')) {
             if (e.key === 'ArrowRight') nextOnboardingStep();
             if (e.key === 'ArrowLeft') prevOnboardingStep();
@@ -331,6 +340,9 @@ function renderTodayFocus() {
                         <polyline points="20 6 9 17 4 12"/>
                     </svg>
                 </div>
+                <button type="button" class="today-habit-icon-badge" onclick="event.stopPropagation(); openHabitIconPicker('${h.id}')" title="Change icon for ${sanitizeHTML(h.name)}" aria-label="Change icon">
+                    ${getHabitIcon(h)}
+                </button>
                 <div class="today-habit-info">
                     <span class="today-habit-title">${sanitizeHTML(h.name)}</span>
                     <div class="today-habit-meta">
@@ -428,7 +440,7 @@ function addNewHabitFromToday() {
         return;
     }
 
-    habits.push({ id: generateUUID(), name: newName });
+    habits.push({ id: generateUUID(), name: newName, icon: getSmartHabitIcon(newName) });
     localStorage.setItem('myCustomHabits_v3', JSON.stringify(habits));
     if (input) input.value = '';
     if (msg) msg.textContent = '';
@@ -519,7 +531,7 @@ function addNewHabit() {
         return;
     }
 
-    habits.push({ id: generateUUID(), name: newName });
+    habits.push({ id: generateUUID(), name: newName, icon: getSmartHabitIcon(newName) });
     localStorage.setItem('myCustomHabits_v3', JSON.stringify(habits));
     input.value = '';
     msg.textContent = '';
@@ -735,8 +747,10 @@ function buildGrids() {
         tdName.className = 'sticky-left';
 
         const safeName = sanitizeHTML(habitObj.name);
+        const habitIcon = getHabitIcon(habitObj);
         tdName.innerHTML = `
             <div class="habit-cell-content">
+                <button type="button" class="habit-icon-btn" onclick="openHabitIconPicker('${habitObj.id}')" title="Change icon for ${safeName}" aria-label="Change habit icon">${habitIcon}</button>
                 <span class="habit-name" title="${safeName}">${safeName}</span>
                 <div class="habit-row-actions">
                     <button class="icon-btn" onclick="moveHabit(${hIdx}, -1)" ${hIdx === 0 ? 'style="visibility:hidden"' : ''} title="Move up" aria-label="Move up">${SVG_ICONS.arrowUp}</button>
@@ -2150,4 +2164,541 @@ window.navigateGridJournalDay = navigateGridJournalDay;
 window.jumpGridJournalToToday = jumpGridJournalToToday;
 window.focusGridJournalDay = focusGridJournalDay;
 window.switchGridJournalDay = switchGridJournalDay;
+
+// ============================================================
+// NOTION-STYLE WORKSPACE CUSTOMIZER & AESTHETICS SYSTEM
+// ============================================================
+
+function getSmartHabitIcon(name) {
+    if (!name) return '✦';
+    const n = name.toLowerCase();
+    if (n.includes('water') || n.includes('drink') || n.includes('hydrat')) return '💧';
+    if (n.includes('train') || n.includes('lift') || n.includes('gym') || n.includes('weight') || n.includes('workout') || n.includes('resist')) return '🏋️';
+    if (n.includes('run') || n.includes('jog') || n.includes('sprint') || n.includes('cardio')) return '🏃';
+    if (n.includes('walk') || n.includes('step')) return '🚶';
+    if (n.includes('bike') || n.includes('cycl')) return '🚴';
+    if (n.includes('swim')) return '🏊';
+    if (n.includes('stretch') || n.includes('yoga') || n.includes('mobilit')) return '🧘';
+    if (n.includes('meditat') || n.includes('breathe') || n.includes('mindful') || n.includes('zen')) return '🧘';
+    if (n.includes('sleep') || n.includes('bed') || n.includes('rest') || n.includes('screen-free')) return '😴';
+    if (n.includes('wake') || n.includes('morning') || n.includes('early')) return '⏰';
+    if (n.includes('read') || n.includes('book') || n.includes('page') || n.includes('chapter')) return '📚';
+    if (n.includes('code') || n.includes('dev') || n.includes('program') || n.includes('deep work') || n.includes('study') || n.includes('work')) return '💻';
+    if (n.includes('write') || n.includes('journal') || n.includes('reflect') || n.includes('diary')) return '✍️';
+    if (n.includes('eat') || n.includes('diet') || n.includes('nutrition') || n.includes('salad') || n.includes('fasting') || n.includes('meal')) return '🥗';
+    if (n.includes('coffee') || n.includes('tea')) return '☕';
+    if (n.includes('vitamin') || n.includes('supplement') || n.includes('pill') || n.includes('med')) return '💊';
+    if (n.includes('alcohol') || n.includes('sober') || n.includes('smoke') || n.includes('sugar') || n.includes('no junk')) return '🛡️';
+    if (n.includes('clean') || n.includes('chore') || n.includes('tidy') || n.includes('room')) return '🧹';
+    if (n.includes('finance') || n.includes('budget') || n.includes('save') || n.includes('money') || n.includes('invest')) return '💰';
+    if (n.includes('plan') || n.includes('priorit') || n.includes('task') || n.includes('goal')) return '🎯';
+    if (n.includes('music') || n.includes('guitar') || n.includes('piano') || n.includes('sing')) return '🎸';
+    if (n.includes('art') || n.includes('draw') || n.includes('sketch') || n.includes('paint')) return '🎨';
+    return '✦';
+}
+
+function getHabitIcon(habit) {
+    if (!habit) return '✦';
+    if (habit.icon && typeof habit.icon === 'string' && habit.icon.trim()) {
+        return habit.icon.trim();
+    }
+    return getSmartHabitIcon(habit.name);
+}
+
+const NOTION_PRESET_COVERS = [
+    {
+        id: 'lofi',
+        name: 'Lo-Fi Work',
+        url: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80'
+    },
+    {
+        id: 'tokyo',
+        name: 'Tokyo Neon',
+        url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1600&q=80'
+    },
+    {
+        id: 'forest',
+        name: 'Deep Pine',
+        url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1600&q=80'
+    },
+    {
+        id: 'kyoto',
+        name: 'Kyoto Zen',
+        url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=80'
+    },
+    {
+        id: 'sunset',
+        name: 'Sunset Glow',
+        url: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
+    },
+    {
+        id: 'aurora',
+        name: 'Cosmic Aurora',
+        url: 'linear-gradient(135deg, #09203f 0%, #537895 100%)'
+    },
+    {
+        id: 'obsidian',
+        name: 'Dark Obsidian',
+        url: 'linear-gradient(135deg, #181920 0%, #292a38 50%, #0d0e13 100%)'
+    },
+    {
+        id: 'golden',
+        name: 'Golden Hour',
+        url: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)'
+    }
+];
+
+const NOTION_PAGE_EMOJIS = ['⚡', '🌱', '🎯', '🚀', '🏔️', '☕', '🧘', '📚', '🏆', '🔥', '💡', '🛡️', '🌊', '🦉', '🪐', '🎨', '⚔️', '💎', '🧠', '☀️', '🌙', '⭐', '🌿', '🏹'];
+
+const NOTION_HABIT_ICONS = [
+    '💧', '🏋️', '🏃', '🚴', '🏊', '🧘', '🧗', '🥋', '🥗', '🥑', '🍎', '😴', '💊',
+    '📚', '✍️', '💻', '🧠', '💡', '🎯', '🎨', '🎸', '☕', '📖', '🧩', '⚡', '🔬',
+    '⏰', '🧹', '🧼', '💰', '📵', '🔋', '🛡️', '🌿', '☀️', '🌙', '🏆', '🔥', '✨', '✦'
+];
+
+const NOTION_WALLPAPERS = [
+    { id: 'none', title: 'Default Theme Canvas', desc: 'Clean background matching selected theme' },
+    { id: 'grid', title: 'Blueprint Grid', desc: 'Architectural subtle alignment grid' },
+    { id: 'dots', title: 'Tactile Dot Matrix', desc: 'Minimal dot-matrix pattern' },
+    { id: 'mesh', title: 'Ambient Mesh Gradient', desc: 'Warm atmospheric glow across workspace' }
+];
+
+let notionWorkspace = {
+    coverUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80',
+    coverHidden: false,
+    pageIcon: '⚡',
+    pageTitle: 'Habit OS',
+    pageQuote: '“We are what we repeatedly do. Excellence, then, is not an act, but a habit.”',
+    wallpaper: 'none',
+    wallpaperUrl: '',
+    font: 'sans',
+    glassEffect: false
+};
+
+function initNotionWorkspace() {
+    const saved = safeJSONParse(localStorage.getItem('notion_workspace_v1'), null);
+    if (saved && typeof saved === 'object') {
+        notionWorkspace = { ...notionWorkspace, ...saved };
+    }
+    applyNotionWorkspaceToDOM();
+    renderCustomizerPresetCovers();
+    renderCustomizerPageEmojis();
+    renderCustomizerWallpapers();
+    renderHabitIconPickerGrid();
+    setupNotionInlineEditing();
+}
+
+function applyNotionWorkspaceToDOM() {
+    // 1. Cover
+    const coverWrapper = document.getElementById('notionCoverWrapper');
+    const coverImg = document.getElementById('notionCoverImg');
+    const toggleBtn = document.getElementById('notionToggleCoverBtn');
+    const restoreBtn = document.getElementById('notionRestoreCoverBtn');
+    const coverCheckbox = document.getElementById('coverVisibilityCheckbox');
+
+    if (coverImg) {
+        if (notionWorkspace.coverUrl.startsWith('linear-gradient')) {
+            coverImg.style.backgroundImage = notionWorkspace.coverUrl;
+        } else {
+            coverImg.style.backgroundImage = `url("${notionWorkspace.coverUrl}")`;
+        }
+    }
+
+    if (coverWrapper) {
+        coverWrapper.classList.toggle('cover-collapsed', Boolean(notionWorkspace.coverHidden));
+    }
+    if (toggleBtn) {
+        toggleBtn.textContent = notionWorkspace.coverHidden ? '+ Show Cover' : '✕ Hide';
+    }
+    if (restoreBtn) {
+        restoreBtn.classList.toggle('hidden', !notionWorkspace.coverHidden);
+    }
+    if (coverCheckbox) {
+        coverCheckbox.checked = !notionWorkspace.coverHidden;
+    }
+
+    // 2. Identity
+    const pageIconDisplay = document.getElementById('notionPageIconDisplay');
+    const titleEl = document.getElementById('notionWorkspaceTitle');
+    const quoteEl = document.getElementById('notionWorkspaceQuote');
+    const titleInput = document.getElementById('customWorkspaceTitleInput');
+    const quoteInput = document.getElementById('customWorkspaceQuoteInput');
+
+    if (pageIconDisplay) pageIconDisplay.textContent = notionWorkspace.pageIcon || '⚡';
+    if (titleEl) titleEl.textContent = notionWorkspace.pageTitle || 'Habit OS';
+    if (quoteEl) quoteEl.textContent = notionWorkspace.pageQuote || '';
+    if (titleInput) titleInput.value = notionWorkspace.pageTitle || 'Habit OS';
+    if (quoteInput) quoteInput.value = notionWorkspace.pageQuote || '';
+
+    // 3. Wallpaper & Atmosphere
+    document.body.dataset.wallpaper = notionWorkspace.wallpaper || 'none';
+    if (notionWorkspace.wallpaper === 'custom' && notionWorkspace.wallpaperUrl) {
+        document.body.style.backgroundImage = `url("${notionWorkspace.wallpaperUrl}")`;
+        document.body.classList.add('has-custom-wallpaper');
+    } else {
+        if (notionWorkspace.wallpaper !== 'mesh' && notionWorkspace.wallpaper !== 'grid' && notionWorkspace.wallpaper !== 'dots') {
+            document.body.style.backgroundImage = '';
+        }
+        document.body.classList.remove('has-custom-wallpaper');
+    }
+
+    // 4. Glass Effect
+    document.body.classList.toggle('has-glass-effect', Boolean(notionWorkspace.glassEffect));
+    const glassCheckbox = document.getElementById('glassEffectCheckbox');
+    if (glassCheckbox) glassCheckbox.checked = Boolean(notionWorkspace.glassEffect);
+
+    // 5. Typography
+    const font = notionWorkspace.font || 'sans';
+    document.body.dataset.font = font;
+    document.querySelectorAll('.font-option-card').forEach(card => card.classList.remove('active'));
+    if (font === 'serif') document.getElementById('fontCardSerif')?.classList.add('active');
+    else if (font === 'mono') document.getElementById('fontCardMono')?.classList.add('active');
+    else document.getElementById('fontCardSans')?.classList.add('active');
+}
+
+function setupNotionInlineEditing() {
+    const titleEl = document.getElementById('notionWorkspaceTitle');
+    const quoteEl = document.getElementById('notionWorkspaceQuote');
+
+    if (titleEl) {
+        titleEl.addEventListener('blur', () => {
+            const val = titleEl.textContent.trim();
+            notionWorkspace.pageTitle = val || 'Habit OS';
+            titleEl.textContent = notionWorkspace.pageTitle;
+            saveNotionWorkspace();
+        });
+        titleEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                titleEl.blur();
+            }
+        });
+    }
+
+    if (quoteEl) {
+        quoteEl.addEventListener('blur', () => {
+            notionWorkspace.pageQuote = quoteEl.textContent.trim();
+            saveNotionWorkspace();
+        });
+        quoteEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                quoteEl.blur();
+            }
+        });
+    }
+}
+
+function saveNotionWorkspace(pushToCloud = true) {
+    localStorage.setItem('notion_workspace_v1', JSON.stringify(notionWorkspace));
+    if (pushToCloud && window.SupaSync?.pushUserPreferences) {
+        window.SupaSync.pushUserPreferences();
+    }
+}
+
+function openCustomizeModal(tab = 'cover') {
+    const overlay = document.getElementById('customizeLayoutModalOverlay');
+    if (!overlay) return;
+    overlay.classList.add('active');
+    if (tab === 'general') tab = 'cover';
+    switchCustomTab(tab);
+}
+
+function closeCustomizeModal() {
+    document.getElementById('customizeLayoutModalOverlay')?.classList.remove('active');
+}
+
+function switchCustomTab(tab) {
+    const tabs = ['cover', 'identity', 'atmosphere', 'typography'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const panel = document.getElementById(`customPanel${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const isActive = t === tab;
+        btn?.classList.toggle('active', isActive);
+        panel?.classList.toggle('hidden', !isActive);
+    });
+}
+
+function renderCustomizerPresetCovers() {
+    const grid = document.getElementById('presetCoversGrid');
+    if (!grid) return;
+    grid.innerHTML = NOTION_PRESET_COVERS.map(c => `
+        <div class="preset-cover-card ${c.url === notionWorkspace.coverUrl ? 'active' : ''}" 
+             style="background:${c.url.startsWith('linear-gradient') ? c.url : `url('${c.url}') center/cover no-repeat`}"
+             onclick="setNotionCover('${c.url}')" title="${c.name}">
+            <span class="preset-cover-name">${c.name}</span>
+        </div>
+    `).join('');
+}
+
+function setNotionCover(url) {
+    notionWorkspace.coverUrl = url;
+    notionWorkspace.coverHidden = false;
+    applyNotionWorkspaceToDOM();
+    renderCustomizerPresetCovers();
+    saveNotionWorkspace();
+}
+
+function applyCustomCoverUrl() {
+    const input = document.getElementById('customCoverUrlInput');
+    const val = input ? input.value.trim() : '';
+    if (!val) return;
+    setNotionCover(val);
+    input.value = '';
+}
+
+function handleCoverFileUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        if (e.target.result) {
+            setNotionCover(e.target.result);
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+function resetCoverToDefault() {
+    setNotionCover(NOTION_PRESET_COVERS[0].url);
+}
+
+function toggleCoverVisibility() {
+    notionWorkspace.coverHidden = !notionWorkspace.coverHidden;
+    applyNotionWorkspaceToDOM();
+    saveNotionWorkspace();
+}
+
+function handleCoverVisibilityToggle(checked) {
+    notionWorkspace.coverHidden = !checked;
+    applyNotionWorkspaceToDOM();
+    saveNotionWorkspace();
+}
+
+function renderCustomizerPageEmojis() {
+    const grid = document.getElementById('pageEmojiQuickGrid');
+    if (!grid) return;
+    grid.innerHTML = NOTION_PAGE_EMOJIS.map(em => `
+        <button type="button" class="emoji-btn ${em === notionWorkspace.pageIcon ? 'active' : ''}" onclick="setNotionPageIcon('${em}')">
+            ${em}
+        </button>
+    `).join('');
+}
+
+function setNotionPageIcon(emoji) {
+    notionWorkspace.pageIcon = emoji;
+    applyNotionWorkspaceToDOM();
+    renderCustomizerPageEmojis();
+    saveNotionWorkspace();
+}
+
+function applyCustomPageIcon() {
+    const input = document.getElementById('customPageIconInput');
+    const val = input ? input.value.trim() : '';
+    if (!val) return;
+    setNotionPageIcon(val);
+    input.value = '';
+}
+
+function saveWorkspaceIdentity() {
+    const titleInput = document.getElementById('customWorkspaceTitleInput');
+    const quoteInput = document.getElementById('customWorkspaceQuoteInput');
+    if (titleInput) notionWorkspace.pageTitle = titleInput.value.trim() || 'Habit OS';
+    if (quoteInput) notionWorkspace.pageQuote = quoteInput.value.trim();
+    applyNotionWorkspaceToDOM();
+    saveNotionWorkspace();
+    closeCustomizeModal();
+}
+
+function renderCustomizerWallpapers() {
+    const grid = document.getElementById('wallpaperOptionsGrid');
+    if (!grid) return;
+    grid.innerHTML = NOTION_WALLPAPERS.map(w => `
+        <div class="wallpaper-option-card ${notionWorkspace.wallpaper === w.id ? 'active' : ''}" onclick="setNotionWallpaper('${w.id}')">
+            <span class="wallpaper-card-title">${w.title}</span>
+            <span class="wallpaper-card-desc">${w.desc}</span>
+        </div>
+    `).join('');
+}
+
+function setNotionWallpaper(type, customUrl = '') {
+    notionWorkspace.wallpaper = type;
+    if (type === 'custom') {
+        notionWorkspace.wallpaperUrl = customUrl || notionWorkspace.wallpaperUrl;
+    }
+    applyNotionWorkspaceToDOM();
+    renderCustomizerWallpapers();
+    saveNotionWorkspace();
+}
+
+function applyCustomWallpaperUrl() {
+    const input = document.getElementById('customWallpaperUrlInput');
+    const val = input ? input.value.trim() : '';
+    if (!val) return;
+    setNotionWallpaper('custom', val);
+    input.value = '';
+}
+
+function handleWallpaperFileUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        if (e.target.result) {
+            setNotionWallpaper('custom', e.target.result);
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+function handleGlassEffectToggle(checked) {
+    notionWorkspace.glassEffect = Boolean(checked);
+    applyNotionWorkspaceToDOM();
+    saveNotionWorkspace();
+}
+
+function applyWorkspaceFont(fontType) {
+    notionWorkspace.font = fontType;
+    applyNotionWorkspaceToDOM();
+    saveNotionWorkspace();
+}
+
+// ── Habit Custom Icon Picker ──
+let activeIconPickerHabitId = null;
+let pendingHabitIcon = null;
+
+function renderHabitIconPickerGrid() {
+    const grid = document.getElementById('habitIconGrid');
+    if (!grid) return;
+    grid.innerHTML = NOTION_HABIT_ICONS.map(ic => `
+        <button type="button" class="habit-icon-cell ${ic === pendingHabitIcon ? 'active' : ''}" onclick="selectHabitIcon('${ic}')">
+            ${ic}
+        </button>
+    `).join('');
+}
+
+function openHabitIconPicker(habitId) {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+    activeIconPickerHabitId = habitId;
+    pendingHabitIcon = getHabitIcon(habit);
+
+    const titleEl = document.getElementById('habitIconModalTitle');
+    const subEl = document.getElementById('habitIconModalSubtitle');
+    if (titleEl) titleEl.textContent = `Icon for "${habit.name}"`;
+    if (subEl) subEl.textContent = `Current icon: ${pendingHabitIcon}`;
+
+    renderHabitIconPickerGrid();
+    document.getElementById('habitIconPickerModalOverlay')?.classList.add('active');
+}
+
+function closeHabitIconPicker() {
+    document.getElementById('habitIconPickerModalOverlay')?.classList.remove('active');
+    activeIconPickerHabitId = null;
+    pendingHabitIcon = null;
+}
+
+function selectHabitIcon(emoji) {
+    pendingHabitIcon = emoji;
+    renderHabitIconPickerGrid();
+    const subEl = document.getElementById('habitIconModalSubtitle');
+    if (subEl) subEl.textContent = `Selected: ${emoji}`;
+}
+
+function applyCustomHabitEmojiFromInput() {
+    const input = document.getElementById('customHabitEmojiInput');
+    const val = input ? input.value.trim() : '';
+    if (!val) return;
+    selectHabitIcon(val);
+    input.value = '';
+}
+
+function autoSuggestHabitIcon() {
+    const habit = habits.find(h => h.id === activeIconPickerHabitId);
+    if (!habit) return;
+    const suggested = getSmartHabitIcon(habit.name);
+    selectHabitIcon(suggested);
+}
+
+function removeHabitIcon() {
+    selectHabitIcon('✦');
+}
+
+function saveSelectedHabitIcon() {
+    if (!activeIconPickerHabitId || !pendingHabitIcon) {
+        closeHabitIconPicker();
+        return;
+    }
+    const habit = habits.find(h => h.id === activeIconPickerHabitId);
+    if (habit) {
+        habit.icon = pendingHabitIcon;
+        localStorage.setItem('myCustomHabits_v3', JSON.stringify(habits));
+        buildGrids();
+        renderTodayFocus();
+        window.SupaSync?.pushHabits?.(habits);
+        window.SupaSync?.triggerSync?.(currentYear, currentMonth);
+    }
+    closeHabitIconPicker();
+}
+
+// ── Notion Customizer Window Exports ──
+window.getNotionWorkspace = () => notionWorkspace;
+window.setNotionWorkspace = (data) => {
+    if (data && typeof data === 'object') {
+        notionWorkspace = { ...notionWorkspace, ...data };
+        localStorage.setItem('notion_workspace_v1', JSON.stringify(notionWorkspace));
+        applyNotionWorkspaceToDOM();
+    }
+};
+
+window.getHabitIconsMap = () => {
+    const map = {};
+    habits.forEach(h => {
+        if (h.icon) map[h.id] = h.icon;
+    });
+    return map;
+};
+
+window.applyHabitIconsMap = (map) => {
+    if (!map || typeof map !== 'object') return;
+    let modified = false;
+    habits.forEach(h => {
+        if (map[h.id] && h.icon !== map[h.id]) {
+            h.icon = map[h.id];
+            modified = true;
+        }
+    });
+    if (modified) {
+        localStorage.setItem('myCustomHabits_v3', JSON.stringify(habits));
+        buildGrids();
+        renderTodayFocus();
+    }
+};
+
+window.openCustomizeModal = openCustomizeModal;
+window.closeCustomizeModal = closeCustomizeModal;
+window.switchCustomTab = switchCustomTab;
+window.setNotionCover = setNotionCover;
+window.applyCustomCoverUrl = applyCustomCoverUrl;
+window.handleCoverFileUpload = handleCoverFileUpload;
+window.resetCoverToDefault = resetCoverToDefault;
+window.toggleCoverVisibility = toggleCoverVisibility;
+window.handleCoverVisibilityToggle = handleCoverVisibilityToggle;
+window.setNotionPageIcon = setNotionPageIcon;
+window.applyCustomPageIcon = applyCustomPageIcon;
+window.saveWorkspaceIdentity = saveWorkspaceIdentity;
+window.setNotionWallpaper = setNotionWallpaper;
+window.applyCustomWallpaperUrl = applyCustomWallpaperUrl;
+window.handleWallpaperFileUpload = handleWallpaperFileUpload;
+window.handleGlassEffectToggle = handleGlassEffectToggle;
+window.applyWorkspaceFont = applyWorkspaceFont;
+
+window.openHabitIconPicker = openHabitIconPicker;
+window.closeHabitIconPicker = closeHabitIconPicker;
+window.selectHabitIcon = selectHabitIcon;
+window.applyCustomHabitEmojiFromInput = applyCustomHabitEmojiFromInput;
+window.autoSuggestHabitIcon = autoSuggestHabitIcon;
+window.removeHabitIcon = removeHabitIcon;
+window.saveSelectedHabitIcon = saveSelectedHabitIcon;
+window.getHabitIcon = getHabitIcon;
 

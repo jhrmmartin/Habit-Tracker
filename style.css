@@ -2232,3 +2232,701 @@ select.mood-sleep-select option {
         min-width: 160px;
     }
 }
+
+/* ============================================================
+   NOTION-STYLE WORKSPACE CUSTOMIZER & AESTHETIC COVER BANNER
+   ============================================================ */
+
+/* ── Top Cover Wrapper (Spans full grid width) ── */
+.notion-cover-wrapper {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 4px;
+    position: relative;
+}
+
+.notion-cover-banner {
+    position: relative;
+    width: 100%;
+    height: 195px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: linear-gradient(135deg, #1f2937 0%, #111827 50%, #030712 100%);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+    transition: height var(--duration-standard) var(--ease-snappy);
+}
+
+.notion-cover-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: transform 0.4s ease, opacity 0.3s ease;
+}
+
+.notion-cover-banner:hover .notion-cover-img {
+    transform: scale(1.015);
+}
+
+.notion-cover-gradient-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 100%);
+    pointer-events: none;
+}
+
+.notion-cover-controls {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity var(--duration-standard) var(--ease-snappy);
+    z-index: 5;
+}
+
+.notion-cover-banner:hover .notion-cover-controls,
+.notion-cover-controls:focus-within {
+    opacity: 1;
+}
+
+.notion-cover-btn {
+    background: rgba(15, 17, 23, 0.76);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    transition: background var(--duration-micro), transform var(--duration-micro);
+}
+
+.notion-cover-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.notion-cover-btn-ghost {
+    background: rgba(15, 17, 23, 0.55);
+}
+
+/* ── Collapsed Banner State ── */
+.notion-cover-wrapper.cover-collapsed .notion-cover-banner {
+    display: none;
+}
+
+.notion-cover-wrapper.cover-collapsed .notion-restore-cover-btn {
+    display: inline-flex !important;
+}
+
+.notion-cover-wrapper.cover-collapsed .notion-identity-bar {
+    padding-top: 10px;
+}
+
+.notion-cover-wrapper.cover-collapsed .notion-page-icon-wrapper {
+    margin-top: 0;
+}
+
+/* ── Notion Floating Page Identity Header ── */
+.notion-identity-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    padding: 0 14px 10px 14px;
+    position: relative;
+    z-index: 6;
+}
+
+.notion-page-icon-wrapper {
+    position: relative;
+    margin-top: -38px;
+    flex-shrink: 0;
+}
+
+.notion-page-icon-btn {
+    width: 66px;
+    height: 66px;
+    border-radius: 18px;
+    background: var(--bg-surface-elevated);
+    border: 2px solid var(--border-strong);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+    user-select: none;
+}
+
+.notion-page-icon-btn:hover {
+    transform: scale(1.08) translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.5), 0 0 0 2px var(--accent-subtle);
+}
+
+.notion-title-block {
+    flex: 1;
+    min-width: 0;
+    padding-bottom: 2px;
+}
+
+.notion-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.notion-workspace-title {
+    font-size: 1.625rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    line-height: 1.2;
+    outline: none;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: -6px;
+    transition: background 0.15s ease;
+}
+
+.notion-workspace-title:hover,
+.notion-workspace-title:focus {
+    background: var(--bg-subtle);
+}
+
+.notion-workspace-title:focus {
+    box-shadow: 0 0 0 1px var(--border-focus);
+}
+
+.notion-edit-title-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    opacity: 0.5;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+.notion-edit-title-btn:hover {
+    opacity: 1;
+    color: var(--accent);
+}
+
+.notion-workspace-quote {
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-top: 4px;
+    line-height: 1.4;
+    outline: none;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: -6px;
+    transition: background 0.15s ease;
+}
+
+.notion-workspace-quote:hover,
+.notion-workspace-quote:focus {
+    background: var(--bg-subtle);
+}
+
+.notion-workspace-quote:focus {
+    box-shadow: 0 0 0 1px var(--border-focus);
+}
+
+.notion-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 4px;
+}
+
+.notion-custom-btn {
+    padding: 6px 12px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    gap: 6px;
+}
+
+/* ── Per-Habit Custom Icon Buttons (Month Grid & Today Focus) ── */
+.habit-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    font-size: 0.95rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    line-height: 1;
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.habit-icon-btn:hover {
+    transform: scale(1.15);
+    background: var(--bg-surface-active);
+    border-color: var(--accent);
+}
+
+.today-habit-icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    font-size: 1.25rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.today-habit-icon-badge:hover {
+    transform: scale(1.12);
+    border-color: var(--accent);
+}
+
+/* ── Typography Switching ── */
+body[data-font="serif"] {
+    font-family: 'Merriweather', Georgia, serif;
+}
+
+body[data-font="serif"] .panel-title,
+body[data-font="serif"] .notion-workspace-title,
+body[data-font="serif"] h1,
+body[data-font="serif"] h2,
+body[data-font="serif"] h3 {
+    font-family: 'Merriweather', Georgia, serif;
+}
+
+body[data-font="mono"] {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+body[data-font="mono"] .notion-workspace-title,
+body[data-font="mono"] h1,
+body[data-font="mono"] h2,
+body[data-font="mono"] h3 {
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.03em;
+}
+
+/* ── Atmosphere & Canvas Wallpaper Modes ── */
+body[data-wallpaper="mesh"] {
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(229, 152, 56, 0.08) 0px, transparent 55%),
+        radial-gradient(at 100% 0%, rgba(56, 189, 248, 0.07) 0px, transparent 55%),
+        radial-gradient(at 50% 100%, rgba(168, 85, 247, 0.06) 0px, transparent 65%);
+    background-attachment: fixed;
+}
+
+body[data-wallpaper="grid"] {
+    background-image: 
+        linear-gradient(var(--border-subtle) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-attachment: fixed;
+}
+
+body[data-wallpaper="dots"] {
+    background-image: radial-gradient(var(--border-strong) 1.2px, transparent 1.2px);
+    background-size: 22px 22px;
+    background-attachment: fixed;
+}
+
+body.has-custom-wallpaper {
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    position: relative;
+}
+
+body.has-custom-wallpaper::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 13, 18, 0.72);
+    pointer-events: none;
+    z-index: -1;
+    backdrop-filter: blur(2px);
+}
+
+/* ── Glassmorphism Frosted Cards ── */
+body.has-glass-effect .panel,
+body.has-glass-effect .modal-box,
+body.has-glass-effect .notion-identity-bar {
+    background: rgba(19, 20, 27, 0.78) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme="paper"] body.has-glass-effect .panel,
+[data-theme="paper"] body.has-glass-effect .modal-box {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/* ── Customizer Modal Box & Tabs ── */
+.customizer-modal-box {
+    max-width: 660px;
+    width: 94vw;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.customizer-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.customizer-tabs {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.customizer-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.custom-tab-btn {
+    padding: 7px 14px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.custom-tab-btn:hover {
+    background: var(--bg-surface-elevated);
+    color: var(--text-primary);
+}
+
+.custom-tab-btn.active {
+    background: var(--accent-subtle);
+    color: var(--accent);
+    border-color: var(--accent-border);
+}
+
+.customizer-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.custom-section-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.customizer-help-text {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    line-height: 1.4;
+}
+
+/* ── Preset Covers Grid ── */
+.preset-covers-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.preset-cover-card {
+    position: relative;
+    height: 74px;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--border-subtle);
+    overflow: hidden;
+    cursor: pointer;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: transform var(--duration-micro), border-color var(--duration-micro), box-shadow var(--duration-micro);
+}
+
+.preset-cover-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+}
+
+.preset-cover-card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.preset-cover-name {
+    position: absolute;
+    bottom: 0;
+    inset-inline: 0;
+    background: rgba(0, 0, 0, 0.68);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 3px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Page Icon Emoji Grid ── */
+.emoji-quick-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+}
+
+.emoji-btn {
+    height: 40px;
+    font-size: 1.3rem;
+    border-radius: 8px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--duration-micro), border-color var(--duration-micro);
+}
+
+.emoji-btn:hover {
+    transform: scale(1.18);
+    border-color: var(--accent);
+    background: var(--bg-surface-active);
+}
+
+.emoji-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+/* ── Wallpaper Options Grid ── */
+.wallpaper-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.wallpaper-option-card {
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-elevated);
+    cursor: pointer;
+    transition: all var(--duration-micro) var(--ease-snappy);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wallpaper-option-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+}
+
+.wallpaper-option-card.active {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+.wallpaper-card-title {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.wallpaper-card-desc {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* ── Font Options Grid ── */
+.font-options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.font-option-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-elevated);
+    cursor: pointer;
+    transition: all var(--duration-micro) var(--ease-snappy);
+}
+
+.font-option-card:hover {
+    border-color: var(--border-strong);
+}
+
+.font-option-card.active {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+.font-preview-letters {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.font-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.font-name {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.font-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* ── Per-Habit Icon Picker Modal ── */
+.habit-icon-modal-box {
+    max-width: 460px;
+    width: 92vw;
+    padding: 22px;
+}
+
+.habit-icon-cat-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 8px;
+}
+
+.habit-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.habit-icon-cell {
+    height: 40px;
+    font-size: 1.35rem;
+    border-radius: 8px;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--duration-micro), border-color var(--duration-micro);
+}
+
+.habit-icon-cell:hover {
+    transform: scale(1.18);
+    border-color: var(--accent);
+    background: var(--bg-surface-active);
+}
+
+.habit-icon-cell.active {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+}
+
+/* ── Mobile Responsive Adjustments for Notion Layout ── */
+@media (max-width: 768px) {
+    .notion-cover-banner {
+        height: 140px;
+    }
+    .notion-page-icon-btn {
+        width: 52px;
+        height: 52px;
+        font-size: 1.5rem;
+        border-radius: 14px;
+    }
+    .notion-page-icon-wrapper {
+        margin-top: -26px;
+    }
+    .notion-workspace-title {
+        font-size: 1.3rem;
+    }
+    .notion-workspace-quote {
+        font-size: 0.78rem;
+    }
+    .notion-cover-controls {
+        opacity: 1; /* Always visible on touch screens */
+        top: 8px;
+        right: 8px;
+    }
+    .preset-covers-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .emoji-quick-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+    .wallpaper-options-grid {
+        grid-template-columns: 1fr;
+    }
+    .habit-icon-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
