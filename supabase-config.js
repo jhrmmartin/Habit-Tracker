@@ -50,6 +50,6 @@
 // ─────────────────────────────────────────────────────────────
 
 window.SUPABASE_CONFIG = {
-    url:     'https://YOUR_PROJECT_ID.supabase.co',
-    anonKey: 'YOUR_ANON_KEY_HERE'
+    url:     'https://supabase.com/dashboard/project/dtfyyxmrmhpxusynhvfl',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0Znl5eG1ybWhweHVzeW5odmZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwMDIxNjIsImV4cCI6MjEwNjU3ODE2Mn0.58ysNGS3JflnZqtbAcL45W3l41DXdzHWNLbWeCpu3eI'
 };
