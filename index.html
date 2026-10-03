@@ -3,64 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habit Tracker</title>
+    <title>Habit Tracker — Daily Discipline</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-    <!-- Ambient background glows -->
-    <div class="ambient-glow glow-1"></div>
-    <div class="ambient-glow glow-2"></div>
-
-    <!-- Custom confirmation modal (replaces native confirm dialogs) -->
+    <!-- Accessible Custom Modal Dialog -->
     <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalMessage">
         <div class="modal-box">
-            <p class="modal-title">Are you sure?</p>
+            <h3 class="modal-title">Confirm Action</h3>
             <p class="modal-message" id="modalMessage"></p>
             <div class="modal-actions">
-                <button id="modalCancel">Cancel</button>
-                <button id="modalConfirm">Confirm</button>
+                <button class="btn" id="modalCancel">Cancel</button>
+                <button class="btn btn-danger" id="modalConfirm">Confirm</button>
             </div>
         </div>
     </div>
 
     <div class="dashboard-container">
 
-        <!-- ══════════════════ LEFT COLUMN ══════════════════ -->
-        <div class="left-column">
+        <!-- ══════════════════ LEFT COLUMN: TRACKER & CHARTS ══════════════════ -->
+        <main class="left-column">
 
-            <!-- Header -->
-            <div class="panel header-controls">
-                <div class="header-title-group">
-                    <span id="greeting" class="greeting-text">Good morning ☀️</span>
-                    <h1>Habit Tracker</h1>
+            <!-- Global Header & Controls -->
+            <header class="panel app-header">
+                <div class="brand-section">
+                    <div class="brand-icon" aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <div class="brand-title-wrap">
+                        <span id="greeting" class="greeting-pill">Today</span>
+                        <h1>Habit Tracker</h1>
+                    </div>
                 </div>
-                <div class="toolbar">
-                    <select id="monthSelect" aria-label="Select month"></select>
-                    <select id="yearSelect"  aria-label="Select year"></select>
-                    <button class="btn" onclick="exportCSV()">Export CSV</button>
-                    <button class="btn btn-danger" onclick="clearMonth()">Clear Month</button>
-                </div>
-            </div>
 
-            <!-- Daily Progress Chart -->
-            <div class="panel">
-                <div class="panel-title">Daily Progress &amp; Wellness</div>
+                <div class="toolbar" role="toolbar" aria-label="Habit tracker calendar and controls">
+                    <select id="monthSelect" class="control-select" aria-label="Select month"></select>
+                    <select id="yearSelect" class="control-select" aria-label="Select year"></select>
+                    
+                    <button class="btn" onclick="exportCSV()" aria-label="Export habit data to CSV">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" x2="12" y1="15" y2="3"/>
+                        </svg>
+                        <span>Export CSV</span>
+                    </button>
+
+                    <button class="btn btn-danger" onclick="clearMonth()" aria-label="Clear all habit data for the selected month">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                        </svg>
+                        <span>Clear Month</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Daily Activity & Wellness Chart -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                        Daily Progress &amp; Wellness Overlay
+                    </h2>
+                </div>
                 <div class="canvas-container">
                     <canvas id="dailyMixedChart"></canvas>
                 </div>
-            </div>
+            </section>
 
-            <!-- Habit Grid -->
-            <div class="panel">
-                <div class="panel-title" style="text-align: left;" id="gridTitle">My Habits</div>
+            <!-- Habit Interactive Grid -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title" id="gridTitle">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Monthly Log
+                    </h2>
+                </div>
 
                 <div class="grid-wrapper">
-                    <table class="tracker-grid" role="grid">
+                    <table class="tracker-grid" role="grid" aria-label="Monthly habit tracker grid">
                         <thead id="tableHeader"></thead>
                         <tbody id="tableBody"></tbody>
                         <tbody id="moodSleepBody"></tbody>
@@ -68,63 +105,100 @@
                 </div>
 
                 <div class="add-habit-container">
-                    <input type="text" id="newHabitInput" placeholder="Add a new habit… e.g. Read 10 Pages 📚" aria-label="New habit name">
-                    <button onclick="addNewHabit()">Add</button>
+                    <input type="text" id="newHabitInput" placeholder="Add a new habit... (e.g. Read 15 mins, Hydrate, Mobility)" aria-label="Habit title">
+                    <button onclick="addNewHabit()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span>Add</span>
+                    </button>
                 </div>
                 <div id="errorMessage" class="error-msg" role="alert"></div>
-            </div>
+            </section>
 
-        </div>
+        </main>
 
-        <!-- ══════════════════ RIGHT COLUMN ══════════════════ -->
-        <div class="right-column">
+        <!-- ══════════════════ RIGHT COLUMN: ANALYTICS & STREAKS ══════════════════ -->
+        <aside class="right-column">
 
-            <!-- Overall Stats -->
-            <div class="panel">
-                <div class="panel-title">Overall Stats</div>
-                <div class="canvas-container" style="height: 140px;">
+            <!-- Overall Performance Donut -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 2a10 10 0 0 1 10 10h-10z"/>
+                        </svg>
+                        Monthly Completion
+                    </h2>
+                </div>
+                <div class="canvas-container" style="height: 130px;">
                     <canvas id="overallDoughnutChart"></canvas>
                 </div>
                 <div class="stat-blocks">
                     <div class="stat-box">
-                        <div class="stat-box-title">Goal</div>
-                        <div class="stat-box-value" id="statGoal">0</div>
+                        <div class="stat-box-title">Target</div>
+                        <div class="stat-box-value tabular" id="statGoal">0</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-box-title">Completed</div>
-                        <div class="stat-box-value" id="statCompleted">0</div>
+                        <div class="stat-box-value tabular" id="statCompleted">0</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-title">Left</div>
-                        <div class="stat-box-value" id="statLeft">0</div>
+                        <div class="stat-box-title">Remaining</div>
+                        <div class="stat-box-value tabular" id="statLeft">0</div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Analysis & Streaks -->
-            <div class="panel">
-                <div class="panel-title">Analysis &amp; Streaks</div>
+            <!-- Streak & Consistency Analysis -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                        </svg>
+                        Streak Telemetry
+                    </h2>
+                </div>
                 <table class="analysis-table">
                     <thead>
                         <tr>
                             <th class="text-left">Habit</th>
-                            <th>Actual</th>
-                            <th>%</th>
-                            <th title="Current Streak">🔥</th>
-                            <th title="Best Streak">🏆</th>
+                            <th>Total</th>
+                            <th>Rate</th>
+                            <th title="Current Active Streak">
+                                <span class="streak-badge" aria-label="Current streak">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                                </span>
+                            </th>
+                            <th title="All-Time Best Streak">
+                                <span class="streak-badge" aria-label="Best streak" style="color: var(--text-secondary);">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+                                </span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="analysisBody"></tbody>
                 </table>
-            </div>
+            </section>
 
-            <!-- Top Habits -->
-            <div class="panel">
-                <div class="panel-title">Top Habits</div>
+            <!-- Top Consistency -->
+            <section class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                            <polyline points="17 6 23 6 23 12"/>
+                        </svg>
+                        Top Discipline
+                    </h2>
+                </div>
                 <ul class="top-habits-list" id="topHabitsList"></ul>
-            </div>
+            </section>
 
-        </div>
+        </aside>
     </div>
 
     <script src="app.js"></script>
