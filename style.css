@@ -4,7 +4,7 @@
    Adheres to: anti-slop-design, better-typography, better-interface
    ============================================================ */
 
-:root {
+:root, [data-theme="obsidian"] {
     /* Surface Colors (True depth, zero AI purple blobs) */
     --bg-canvas: #0c0d11;
     --bg-surface: #13141b;
@@ -51,6 +51,173 @@
     --duration-micro: 120ms;
     --duration-standard: 180ms;
 }
+
+/* 2. FOREST SAGE (Tactile Earth & Botanical Dark) */
+[data-theme="forest"] {
+    --bg-canvas: #0a0f0d;
+    --bg-surface: #111a15;
+    --bg-surface-elevated: #17241d;
+    --bg-surface-active: #1f3027;
+    --bg-subtle: rgba(255, 255, 255, 0.03);
+
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --border-focus: rgba(34, 197, 94, 0.5);
+
+    --text-primary: #f0fdf4;
+    --text-secondary: #86efac;
+    --text-muted: #5c7f6b;
+    --text-inverse: #0a0f0d;
+
+    --accent: #22c55e;
+    --accent-hover: #4ade80;
+    --accent-subtle: rgba(34, 197, 94, 0.12);
+    --accent-border: rgba(34, 197, 94, 0.3);
+
+    --success: #10b981;
+    --success-subtle: rgba(16, 185, 129, 0.12);
+    --danger: #f87171;
+    --danger-subtle: rgba(248, 113, 113, 0.1);
+    --danger-border: rgba(248, 113, 113, 0.25);
+
+    --today-bg: rgba(34, 197, 94, 0.08);
+    --today-border: rgba(34, 197, 94, 0.35);
+    --weekend-bg: rgba(255, 255, 255, 0.015);
+}
+
+/* 3. NORDIC SLATE (Arctic Midnight & Ice Blue) */
+[data-theme="nordic"] {
+    --bg-canvas: #090d16;
+    --bg-surface: #0f172a;
+    --bg-surface-elevated: #1e293b;
+    --bg-surface-active: #283548;
+    --bg-subtle: rgba(255, 255, 255, 0.03);
+
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --border-focus: rgba(56, 189, 248, 0.5);
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-inverse: #090d16;
+
+    --accent: #38bdf8;
+    --accent-hover: #7dd3fc;
+    --accent-subtle: rgba(56, 189, 248, 0.12);
+    --accent-border: rgba(56, 189, 248, 0.3);
+
+    --success: #34d399;
+    --success-subtle: rgba(52, 211, 153, 0.12);
+    --danger: #f87171;
+    --danger-subtle: rgba(248, 113, 113, 0.1);
+    --danger-border: rgba(248, 113, 113, 0.25);
+
+    --today-bg: rgba(56, 189, 248, 0.08);
+    --today-border: rgba(56, 189, 248, 0.35);
+    --weekend-bg: rgba(255, 255, 255, 0.015);
+}
+
+/* 4. WARM ESPRESSO (Rich Coffee & Caramel Ochre) */
+[data-theme="espresso"] {
+    --bg-canvas: #120d0a;
+    --bg-surface: #1a130f;
+    --bg-surface-elevated: #241c17;
+    --bg-surface-active: #302620;
+    --bg-subtle: rgba(255, 255, 255, 0.03);
+
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --border-focus: rgba(217, 119, 6, 0.5);
+
+    --text-primary: #fdf8f4;
+    --text-secondary: #c4b5a5;
+    --text-muted: #7d7065;
+    --text-inverse: #120d0a;
+
+    --accent: #d97706;
+    --accent-hover: #f59e0b;
+    --accent-subtle: rgba(217, 119, 6, 0.12);
+    --accent-border: rgba(217, 119, 6, 0.3);
+
+    --success: #10b981;
+    --success-subtle: rgba(16, 185, 129, 0.12);
+    --danger: #f87171;
+    --danger-subtle: rgba(248, 113, 113, 0.1);
+    --danger-border: rgba(248, 113, 113, 0.25);
+
+    --today-bg: rgba(217, 119, 6, 0.08);
+    --today-border: rgba(217, 119, 6, 0.35);
+    --weekend-bg: rgba(255, 255, 255, 0.015);
+}
+
+/* 5. MIDNIGHT PLUM (Deep Violet & Dusky Rose) */
+[data-theme="dusk"] {
+    --bg-canvas: #0f0c14;
+    --bg-surface: #17131e;
+    --bg-surface-elevated: #211c2a;
+    --bg-surface-active: #2c2537;
+    --bg-subtle: rgba(255, 255, 255, 0.03);
+
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --border-focus: rgba(244, 114, 182, 0.5);
+
+    --text-primary: #faf5ff;
+    --text-secondary: #d8b4fe;
+    --text-muted: #806b96;
+    --text-inverse: #0f0c14;
+
+    --accent: #f472b6;
+    --accent-hover: #f9a8d4;
+    --accent-subtle: rgba(244, 114, 182, 0.12);
+    --accent-border: rgba(244, 114, 182, 0.3);
+
+    --success: #34d399;
+    --success-subtle: rgba(52, 211, 153, 0.12);
+    --danger: #f87171;
+    --danger-subtle: rgba(248, 113, 113, 0.1);
+    --danger-border: rgba(248, 113, 113, 0.25);
+
+    --today-bg: rgba(244, 114, 182, 0.08);
+    --today-border: rgba(244, 114, 182, 0.35);
+    --weekend-bg: rgba(255, 255, 255, 0.015);
+}
+
+/* 6. WARM PAPER (Editorial Light Mode) */
+[data-theme="paper"] {
+    color-scheme: light;
+    --bg-canvas: #f6f5f0;
+    --bg-surface: #ffffff;
+    --bg-surface-elevated: #eeece4;
+    --bg-surface-active: #e4e1d7;
+    --bg-subtle: rgba(0, 0, 0, 0.03);
+
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.15);
+    --border-focus: rgba(194, 65, 12, 0.5);
+
+    --text-primary: #1c1917;
+    --text-secondary: #57534e;
+    --text-muted: #8c857b;
+    --text-inverse: #ffffff;
+
+    --accent: #c2410c;
+    --accent-hover: #9a3412;
+    --accent-subtle: rgba(194, 65, 12, 0.1);
+    --accent-border: rgba(194, 65, 12, 0.25);
+
+    --success: #15803d;
+    --success-subtle: rgba(21, 128, 61, 0.1);
+    --danger: #dc2626;
+    --danger-subtle: rgba(220, 38, 38, 0.1);
+    --danger-border: rgba(220, 38, 38, 0.25);
+
+    --today-bg: rgba(194, 65, 12, 0.07);
+    --today-border: rgba(194, 65, 12, 0.35);
+    --weekend-bg: rgba(0, 0, 0, 0.02);
+}
+
 
 /* Base reset */
 *, *::before, *::after {
@@ -307,7 +474,7 @@ table.tracker-grid th,
 table.tracker-grid td {
     padding: 8px 1px;
     min-width: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border-subtle);
     transition: background-color var(--duration-micro) var(--ease-snappy);
 }
 
@@ -334,7 +501,7 @@ table.tracker-grid th.sticky-left {
 }
 
 .week-label {
-    background: #0f1015 !important;
+    background: var(--bg-surface-elevated) !important;
     color: var(--text-muted);
     font-size: 0.6875rem;
     font-weight: 600;

@@ -94,12 +94,117 @@ const SVG_ICONS = {
 };
 
 // ============================================================
+// THEME SYSTEM & CHART DYNAMIC PALETTES
+// ============================================================
+const THEME_CHART_COLORS = {
+    obsidian: {
+        bar: '#e59838',
+        mood: '#10b981',
+        sleep: '#9ea1b2',
+        grid: 'rgba(255, 255, 255, 0.04)',
+        tick: '#646777',
+        doughnutBg: 'rgba(255, 255, 255, 0.04)'
+    },
+    forest: {
+        bar: '#22c55e',
+        mood: '#10b981',
+        sleep: '#86efac',
+        grid: 'rgba(255, 255, 255, 0.04)',
+        tick: '#5c7f6b',
+        doughnutBg: 'rgba(255, 255, 255, 0.04)'
+    },
+    nordic: {
+        bar: '#38bdf8',
+        mood: '#34d399',
+        sleep: '#94a3b8',
+        grid: 'rgba(255, 255, 255, 0.04)',
+        tick: '#64748b',
+        doughnutBg: 'rgba(255, 255, 255, 0.04)'
+    },
+    espresso: {
+        bar: '#d97706',
+        mood: '#10b981',
+        sleep: '#c4b5a5',
+        grid: 'rgba(255, 255, 255, 0.04)',
+        tick: '#7d7065',
+        doughnutBg: 'rgba(255, 255, 255, 0.04)'
+    },
+    dusk: {
+        bar: '#f472b6',
+        mood: '#34d399',
+        sleep: '#d8b4fe',
+        grid: 'rgba(255, 255, 255, 0.04)',
+        tick: '#806b96',
+        doughnutBg: 'rgba(255, 255, 255, 0.04)'
+    },
+    paper: {
+        bar: '#c2410c',
+        mood: '#15803d',
+        sleep: '#57534e',
+        grid: 'rgba(0, 0, 0, 0.06)',
+        tick: '#8c857b',
+        doughnutBg: 'rgba(0, 0, 0, 0.05)'
+    }
+};
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('habitTracker_theme') || 'obsidian';
+    applyTheme(savedTheme);
+
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect) {
+        themeSelect.value = savedTheme;
+        themeSelect.addEventListener('change', (e) => {
+            applyTheme(e.target.value);
+        });
+    }
+}
+
+function applyTheme(themeKey) {
+    const validTheme = THEME_CHART_COLORS[themeKey] ? themeKey : 'obsidian';
+    document.documentElement.setAttribute('data-theme', validTheme);
+    localStorage.setItem('habitTracker_theme', validTheme);
+
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect && themeSelect.value !== validTheme) {
+        themeSelect.value = validTheme;
+    }
+
+    updateChartsForTheme(validTheme);
+}
+
+function updateChartsForTheme(themeKey) {
+    if (!mixedChart || !overallChart) return;
+    const c = THEME_CHART_COLORS[themeKey] || THEME_CHART_COLORS.obsidian;
+
+    // Daily Mixed Chart
+    mixedChart.data.datasets[0].backgroundColor = c.bar;
+    mixedChart.data.datasets[1].borderColor = c.mood;
+    mixedChart.data.datasets[1].backgroundColor = c.mood;
+    mixedChart.data.datasets[2].borderColor = c.sleep;
+    mixedChart.data.datasets[2].backgroundColor = c.sleep;
+
+    mixedChart.options.scales.y.ticks.color = c.tick;
+    mixedChart.options.scales.y.grid.color = c.grid;
+    mixedChart.options.scales.y1.ticks.color = c.mood;
+    mixedChart.options.scales.x.ticks.color = c.tick;
+    mixedChart.options.plugins.legend.labels.color = c.sleep;
+    mixedChart.update();
+
+    // Overall Doughnut
+    overallChart.data.datasets[0].backgroundColor = [c.bar, c.doughnutBg];
+    overallChart.update();
+}
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 window.onload = () => {
+    initTheme();
     initGreeting();
     initCalendarSettings();
     initCharts();
+    applyTheme(localStorage.getItem('habitTracker_theme') || 'obsidian');
 
     const input = document.getElementById('newHabitInput');
     if (input) {
@@ -418,10 +523,10 @@ function buildGrids() {
     // ── Wellness Separator ──
     const trWellnessTitle = document.createElement('tr');
     trWellnessTitle.innerHTML = `
-        <td class="sticky-left" style="background:#0f1015; border-top:1px solid var(--border-subtle);">
+        <td class="sticky-left" style="background:var(--bg-surface-elevated); border-top:1px solid var(--border-subtle);">
             <span style="color:var(--text-muted); font-size:0.6875rem; font-weight:700; letter-spacing:0.06em;">WELLNESS METRICS</span>
         </td>
-        <td colspan="${daysInMonth}" style="background:#0f1015; border-top:1px solid var(--border-subtle);"></td>
+        <td colspan="${daysInMonth}" style="background:var(--bg-surface-elevated); border-top:1px solid var(--border-subtle);"></td>
     `;
     msBody.appendChild(trWellnessTitle);
 
