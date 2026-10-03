@@ -11,34 +11,56 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+
+    <!-- Ambient background glows -->
     <div class="ambient-glow glow-1"></div>
     <div class="ambient-glow glow-2"></div>
 
+    <!-- Custom confirmation modal (replaces native confirm dialogs) -->
+    <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalMessage">
+        <div class="modal-box">
+            <p class="modal-title">Are you sure?</p>
+            <p class="modal-message" id="modalMessage"></p>
+            <div class="modal-actions">
+                <button id="modalCancel">Cancel</button>
+                <button id="modalConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <div class="dashboard-container">
+
+        <!-- ══════════════════ LEFT COLUMN ══════════════════ -->
         <div class="left-column">
-            
+
+            <!-- Header -->
             <div class="panel header-controls">
-                <h1>Habit Tracker</h1>
+                <div class="header-title-group">
+                    <span id="greeting" class="greeting-text">Good morning ☀️</span>
+                    <h1>Habit Tracker</h1>
+                </div>
                 <div class="toolbar">
-                    <select id="monthSelect"></select>
-                    <select id="yearSelect"></select>
+                    <select id="monthSelect" aria-label="Select month"></select>
+                    <select id="yearSelect"  aria-label="Select year"></select>
                     <button class="btn" onclick="exportCSV()">Export CSV</button>
                     <button class="btn btn-danger" onclick="clearMonth()">Clear Month</button>
                 </div>
             </div>
 
+            <!-- Daily Progress Chart -->
             <div class="panel">
-                <div class="panel-title">Daily Progress vs Wellness Overlay</div>
+                <div class="panel-title">Daily Progress &amp; Wellness</div>
                 <div class="canvas-container">
                     <canvas id="dailyMixedChart"></canvas>
                 </div>
             </div>
 
+            <!-- Habit Grid -->
             <div class="panel">
                 <div class="panel-title" style="text-align: left;" id="gridTitle">My Habits</div>
-                
+
                 <div class="grid-wrapper">
-                    <table class="tracker-grid">
+                    <table class="tracker-grid" role="grid">
                         <thead id="tableHeader"></thead>
                         <tbody id="tableBody"></tbody>
                         <tbody id="moodSleepBody"></tbody>
@@ -46,42 +68,57 @@
                 </div>
 
                 <div class="add-habit-container">
-                    <input type="text" id="newHabitInput" placeholder="Add a new habit... (e.g., Read 10 Pages 📚)">
+                    <input type="text" id="newHabitInput" placeholder="Add a new habit… e.g. Read 10 Pages 📚" aria-label="New habit name">
                     <button onclick="addNewHabit()">Add</button>
                 </div>
-                <div id="errorMessage" class="error-msg"></div>
-
+                <div id="errorMessage" class="error-msg" role="alert"></div>
             </div>
+
         </div>
 
+        <!-- ══════════════════ RIGHT COLUMN ══════════════════ -->
         <div class="right-column">
-            
+
+            <!-- Overall Stats -->
             <div class="panel">
                 <div class="panel-title">Overall Stats</div>
                 <div class="canvas-container" style="height: 140px;">
                     <canvas id="overallDoughnutChart"></canvas>
                 </div>
                 <div class="stat-blocks">
-                    <div class="stat-box"><div class="stat-box-title">Goal</div><div class="stat-box-value" id="statGoal">0</div></div>
-                    <div class="stat-box"><div class="stat-box-title">Completed</div><div class="stat-box-value" id="statCompleted">0</div></div>
-                    <div class="stat-box"><div class="stat-box-title">Left</div><div class="stat-box-value" id="statLeft">0</div></div>
+                    <div class="stat-box">
+                        <div class="stat-box-title">Goal</div>
+                        <div class="stat-box-value" id="statGoal">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-title">Completed</div>
+                        <div class="stat-box-value" id="statCompleted">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-title">Left</div>
+                        <div class="stat-box-value" id="statLeft">0</div>
+                    </div>
                 </div>
             </div>
 
+            <!-- Analysis & Streaks -->
             <div class="panel">
-                <div class="panel-title">Analysis & Streaks</div>
+                <div class="panel-title">Analysis &amp; Streaks</div>
                 <table class="analysis-table">
-                    <thead><tr>
-                        <th class="text-left">Habit</th>
-                        <th>Actual</th>
-                        <th>%</th>
-                        <th title="Current Streak">🔥</th>
-                        <th title="Best Streak">🏆</th>
-                    </tr></thead>
+                    <thead>
+                        <tr>
+                            <th class="text-left">Habit</th>
+                            <th>Actual</th>
+                            <th>%</th>
+                            <th title="Current Streak">🔥</th>
+                            <th title="Best Streak">🏆</th>
+                        </tr>
+                    </thead>
                     <tbody id="analysisBody"></tbody>
                 </table>
             </div>
 
+            <!-- Top Habits -->
             <div class="panel">
                 <div class="panel-title">Top Habits</div>
                 <ul class="top-habits-list" id="topHabitsList"></ul>
