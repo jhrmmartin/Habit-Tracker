@@ -2266,6 +2266,8 @@ const NOTION_WALLPAPERS = [
 let notionWorkspace = {
     coverUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1600&q=80',
     coverHidden: false,
+    coverHeight: '240px',
+    coverPosition: 'center 35%',
     pageIcon: '⚡',
     pageTitle: 'Habit OS',
     pageQuote: '“We are what we repeatedly do. Excellence, then, is not an act, but a habit.”',
@@ -2292,8 +2294,6 @@ function applyNotionWorkspaceToDOM() {
     // 1. Cover
     const coverWrapper = document.getElementById('notionCoverWrapper');
     const coverImg = document.getElementById('notionCoverImg');
-    const toggleBtn = document.getElementById('notionToggleCoverBtn');
-    const restoreBtn = document.getElementById('notionRestoreCoverBtn');
     const coverCheckbox = document.getElementById('coverVisibilityCheckbox');
 
     if (coverImg) {
@@ -2304,14 +2304,24 @@ function applyNotionWorkspaceToDOM() {
         }
     }
 
+    // Apply Cover Dimensions & Positioning
+    const coverHeight = notionWorkspace.coverHeight || '240px';
+    const coverPos = notionWorkspace.coverPosition || 'center 35%';
+    document.documentElement.style.setProperty('--notion-cover-height', coverHeight);
+    document.documentElement.style.setProperty('--notion-cover-pos', coverPos);
+
+    // Update active state of height buttons
+    document.querySelectorAll('#coverHeightSelector .preset-tag-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.height === coverHeight);
+    });
+
+    // Update active state of position buttons
+    document.querySelectorAll('#coverPosSelector .preset-tag-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.pos === coverPos);
+    });
+
     if (coverWrapper) {
         coverWrapper.classList.toggle('cover-collapsed', Boolean(notionWorkspace.coverHidden));
-    }
-    if (toggleBtn) {
-        toggleBtn.textContent = notionWorkspace.coverHidden ? '+ Show Cover' : '✕ Hide';
-    }
-    if (restoreBtn) {
-        restoreBtn.classList.toggle('hidden', !notionWorkspace.coverHidden);
     }
     if (coverCheckbox) {
         coverCheckbox.checked = !notionWorkspace.coverHidden;
@@ -2471,6 +2481,18 @@ function toggleCoverVisibility() {
 
 function handleCoverVisibilityToggle(checked) {
     notionWorkspace.coverHidden = !checked;
+    applyNotionWorkspaceToDOM();
+    saveNotionWorkspace();
+}
+
+function setNotionCoverHeight(height) {
+    notionWorkspace.coverHeight = height;
+    applyNotionWorkspaceToDOM();
+    saveNotionWorkspace();
+}
+
+function setNotionCoverPosition(pos) {
+    notionWorkspace.coverPosition = pos;
     applyNotionWorkspaceToDOM();
     saveNotionWorkspace();
 }
@@ -2684,6 +2706,8 @@ window.handleCoverFileUpload = handleCoverFileUpload;
 window.resetCoverToDefault = resetCoverToDefault;
 window.toggleCoverVisibility = toggleCoverVisibility;
 window.handleCoverVisibilityToggle = handleCoverVisibilityToggle;
+window.setNotionCoverHeight = setNotionCoverHeight;
+window.setNotionCoverPosition = setNotionCoverPosition;
 window.setNotionPageIcon = setNotionPageIcon;
 window.applyCustomPageIcon = applyCustomPageIcon;
 window.saveWorkspaceIdentity = saveWorkspaceIdentity;

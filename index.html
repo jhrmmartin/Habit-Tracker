@@ -507,6 +507,25 @@
                     </button>
                     <button class="btn btn-ghost" onclick="resetCoverToDefault()">Reset Default</button>
                 </div>
+                <div class="custom-control-row" style="margin-top: 14px; display: flex; gap: 16px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 140px;">
+                        <label class="form-label">Banner Height</label>
+                        <div class="preset-tag-group" id="coverHeightSelector" style="display:flex; gap:6px;">
+                            <button type="button" class="preset-tag-btn" data-height="170px" onclick="setNotionCoverHeight('170px')">Compact</button>
+                            <button type="button" class="preset-tag-btn active" data-height="240px" onclick="setNotionCoverHeight('240px')">Standard</button>
+                            <button type="button" class="preset-tag-btn" data-height="310px" onclick="setNotionCoverHeight('310px')">Expanded</button>
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 140px;">
+                        <label class="form-label">Image Focus / Crop</label>
+                        <div class="preset-tag-group" id="coverPosSelector" style="display:flex; gap:6px;">
+                            <button type="button" class="preset-tag-btn" data-pos="center top" onclick="setNotionCoverPosition('center top')">Top</button>
+                            <button type="button" class="preset-tag-btn active" data-pos="center 35%" onclick="setNotionCoverPosition('center 35%')">Upper</button>
+                            <button type="button" class="preset-tag-btn" data-pos="center center" onclick="setNotionCoverPosition('center center')">Center</button>
+                            <button type="button" class="preset-tag-btn" data-pos="center bottom" onclick="setNotionCoverPosition('center bottom')">Bottom</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Tab 2: Page Identity -->
@@ -659,23 +678,6 @@
             <div class="notion-cover-banner" id="notionCoverBanner">
                 <div class="notion-cover-img" id="notionCoverImg" role="img" aria-label="Workspace cover banner"></div>
                 <div class="notion-cover-gradient-overlay"></div>
-                <div class="notion-cover-controls">
-                    <button class="notion-cover-btn" id="notionChangeCoverBtn" onclick="openCustomizeModal('cover')" title="Change cover image">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                        Change Cover
-                    </button>
-                    <button class="notion-cover-btn" id="notionCustomizeBtn" onclick="openCustomizeModal('atmosphere')" title="Customize wallpaper and aesthetics">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
-                        Layout
-                    </button>
-                    <button class="notion-cover-btn notion-cover-btn-ghost" id="notionToggleCoverBtn" onclick="toggleCoverVisibility()" title="Hide cover banner">
-                        ✕ Hide
-                    </button>
-                </div>
             </div>
 
             <!-- Notion Floating Page Identity Header -->
@@ -693,18 +695,6 @@
                         </button>
                     </div>
                     <p class="notion-workspace-quote" id="notionWorkspaceQuote" contenteditable="true" spellcheck="false" title="Click to edit quote">“We are what we repeatedly do. Excellence, then, is not an act, but a habit.”</p>
-                </div>
-                <div class="notion-actions-right">
-                    <button class="btn btn-ghost notion-restore-cover-btn hidden" id="notionRestoreCoverBtn" onclick="toggleCoverVisibility()" title="Show cover banner">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="21 15 16 10 5 21"/></svg>
-                        + Add Cover
-                    </button>
-                    <button class="btn btn-ghost notion-custom-btn" onclick="openCustomizeModal('general')" title="Customize covers, icons, wallpaper and fonts">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
-                        <span>🎨 Customize</span>
-                    </button>
                 </div>
             </div>
         </div>
@@ -753,13 +743,6 @@
                         <option value="paper">📜 Paper (Light)</option>
                     </select>
 
-                    <button class="btn btn-ghost" onclick="openCustomizeModal('general')" aria-label="Customize workspace appearance" title="Customize covers, icons, fonts & wallpaper">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-                        </svg>
-                        Customize
-                    </button>
-
                     <button class="btn" onclick="exportCSV()" aria-label="Export habit data to CSV">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -772,6 +755,13 @@
                     <button class="btn btn-ghost" onclick="openOnboardingModal(true)" aria-label="Open Onboarding Guide" title="Quick walkthrough guide">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         Guide
+                    </button>
+
+                    <button class="btn btn-ghost" onclick="openCustomizeModal('general')" aria-label="Customize workspace appearance" title="Customize covers, icons, fonts & wallpaper">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                        </svg>
+                        Customize
                     </button>
 
                     <button class="btn btn-receipt" onclick="openReceiptModal()" aria-label="Generate Monthly Discipline Receipt">
