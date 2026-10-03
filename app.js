@@ -242,6 +242,9 @@ window.onload = () => {
             closeOnboardingModal();
             closeDayNoteModal();
             closeRenameJournalModal();
+        } else if (document.getElementById('onboardingModalOverlay')?.classList.contains('active')) {
+            if (e.key === 'ArrowRight') nextOnboardingStep();
+            if (e.key === 'ArrowLeft') prevOnboardingStep();
         }
     });
 
@@ -2027,7 +2030,7 @@ function updateGridJournalTableRow(day) {
 // INTERACTIVE ONBOARDING TUTORIAL (Plays 1 time, with Skip & Auth)
 // ============================================================
 let currentOnboardStep = 1;
-const totalOnboardSteps = 3;
+const totalOnboardSteps = 6;
 
 function initOnboarding() {
     const onboarded = localStorage.getItem('habitTracker_onboarded');
@@ -2069,31 +2072,45 @@ function prevOnboardingStep() {
     }
 }
 
+function jumpToOnboardingStep(step) {
+    showOnboardingStep(step);
+}
+
 function showOnboardingStep(step) {
-    currentOnboardStep = step;
+    currentOnboardStep = Math.max(1, Math.min(totalOnboardSteps, step));
 
     const badge = document.getElementById('onboardingStepBadge');
-    if (badge) badge.textContent = `Step ${step} of ${totalOnboardSteps}`;
+    if (badge) badge.textContent = `Feature ${currentOnboardStep} of ${totalOnboardSteps}`;
 
     for (let i = 1; i <= totalOnboardSteps; i++) {
         const slide = document.getElementById(`onboardSlide${i}`);
         const dot = document.getElementById(`onboardDot${i}`);
-        if (slide) slide.classList.toggle('hidden', i !== step);
-        if (dot) dot.classList.toggle('active', i === step);
+        const tab = document.getElementById(`onboardTab${i}`);
+
+        if (slide) slide.classList.toggle('hidden', i !== currentOnboardStep);
+        if (dot) dot.classList.toggle('active', i === currentOnboardStep);
+        if (tab) {
+            const isActive = (i === currentOnboardStep);
+            tab.classList.toggle('active', isActive);
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            if (isActive) {
+                tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
     }
 
     const prevBtn = document.getElementById('onboardPrevBtn');
     const nextBtn = document.getElementById('onboardNextBtn');
 
     if (prevBtn) {
-        prevBtn.classList.toggle('hidden', step === 1);
+        prevBtn.classList.toggle('hidden', currentOnboardStep === 1);
     }
 
     if (nextBtn) {
-        if (step === totalOnboardSteps) {
+        if (currentOnboardStep === totalOnboardSteps) {
             nextBtn.textContent = 'Get Started ✦';
         } else {
-            nextBtn.textContent = 'Next →';
+            nextBtn.textContent = 'Next Feature →';
         }
     }
 }
@@ -2114,6 +2131,7 @@ window.closeOnboardingModal = closeOnboardingModal;
 window.skipOnboarding = skipOnboarding;
 window.nextOnboardingStep = nextOnboardingStep;
 window.prevOnboardingStep = prevOnboardingStep;
+window.jumpToOnboardingStep = jumpToOnboardingStep;
 window.onboardOpenAuth = onboardOpenAuth;
 window.openDayNoteModal = openDayNoteModal;
 window.closeDayNoteModal = closeDayNoteModal;

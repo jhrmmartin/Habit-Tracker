@@ -122,103 +122,296 @@
         </div>
     </div>
 
-    <!-- ══ Onboarding Tutorial Modal (Plays Once with Skip & Auth) ══ -->
+    <!-- ══ Onboarding Tutorial Modal (Comprehensive 6-Step Feature Tour with Quick Tabs) ══ -->
     <div class="modal-overlay" id="onboardingModalOverlay" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
         <div class="modal-box onboarding-modal-box">
+            <!-- Top bar: Badge, Skip/Close button -->
             <div class="onboarding-top-bar">
-                <span class="onboarding-step-badge" id="onboardingStepBadge">Step 1 of 3</span>
-                <button class="onboarding-skip-btn" onclick="skipOnboarding()">Skip ✕</button>
+                <span class="onboarding-step-badge" id="onboardingStepBadge">Feature 1 of 6</span>
+                <button class="onboarding-skip-btn" onclick="skipOnboarding()" title="Close guide">✕ Close</button>
             </div>
 
-            <!-- Slide 1: Welcome & Philosophy -->
+            <!-- Quick Navigation Category Tabs -->
+            <div class="onboarding-category-tabs" role="tablist" aria-label="Feature topics">
+                <button class="onboard-tab active" id="onboardTab1" role="tab" aria-selected="true" onclick="jumpToOnboardingStep(1)">1. Views</button>
+                <button class="onboard-tab" id="onboardTab2" role="tab" aria-selected="false" onclick="jumpToOnboardingStep(2)">2. Habits</button>
+                <button class="onboard-tab" id="onboardTab3" role="tab" aria-selected="false" onclick="jumpToOnboardingStep(3)">3. Wellness</button>
+                <button class="onboard-tab" id="onboardTab4" role="tab" aria-selected="false" onclick="jumpToOnboardingStep(4)">4. Journal</button>
+                <button class="onboard-tab" id="onboardTab5" role="tab" aria-selected="false" onclick="jumpToOnboardingStep(5)">5. Analytics</button>
+                <button class="onboard-tab" id="onboardTab6" role="tab" aria-selected="false" onclick="jumpToOnboardingStep(6)">6. Sync &amp; Themes</button>
+            </div>
+
+            <!-- Slide 1: Dual Focus Modes (Month Grid vs Today Focus) -->
             <div class="onboarding-slide" id="onboardSlide1">
                 <div class="onboarding-icon-banner" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="4"/>
-                        <path d="M9 12l2.5 2.5L15 9"/>
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
                     </svg>
                 </div>
-                <h3 class="onboarding-title" id="onboardingTitle">Welcome to Daily Discipline</h3>
-                <p class="onboarding-desc">A human-grade habit tracker designed for quiet focus, daily momentum, and personal accountability.</p>
+                <h3 class="onboarding-title" id="onboardingTitle">Dual Interface: Month Grid &amp; Today Focus</h3>
+                <p class="onboarding-desc">Designed for both deep monthly perspective and ultra-fast 10-second daily mobile check-ins.</p>
+
+                <div class="onboarding-preview-box">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: var(--accent-subtle); border: 1px solid var(--accent-border); border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; color: var(--accent);">
+                            ▦ Month Grid View
+                        </span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); align-self: center;">Full 31-day table with weekly groupings, completion stats, and in-table notes</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+                        <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; color: var(--text-primary);">
+                            ⊙ Today Focus View
+                        </span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); align-self: center;">Zero distraction list designed for smartphones. Complete habits in seconds</span>
+                    </div>
+                </div>
+
                 <div class="onboarding-features">
                     <div class="onboarding-feature-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span><strong>Two Views:</strong> Use <em>Month Grid</em> for full calendar vision, or <em>Today Focus</em> for fast 10-second mobile check-ins.</span>
+                        <span><strong>Mobile-First Default:</strong> Opening the website on your phone automatically starts in Today Focus view for quick check-ins.</span>
                     </div>
                     <div class="onboarding-feature-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span><strong>6 Curated Themes:</strong> Switch between Obsidian, Forest, Nordic, Espresso, Plum, or Warm Paper (Light).</span>
+                        <span><strong>Two-Way Synchronization:</strong> Whatever you toggle in Today mode immediately updates the Month Grid table and charts.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Header Toggle:</strong> Tap the <code>Grid</code> and <code>Today</code> buttons in the top navigation anytime to switch views.</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Slide 2: Wellness & Micro-Journal -->
+            <!-- Slide 2: Daily Habit Tracking & Routine Management -->
             <div class="onboarding-slide hidden" id="onboardSlide2">
                 <div class="onboarding-icon-banner" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 20h9"/>
-                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
                     </svg>
                 </div>
-                <h3 class="onboarding-title">Wellness &amp; Daily Wins</h3>
-                <p class="onboarding-desc">Connect your daily habits with how you actually feel and sleep.</p>
+                <h3 class="onboarding-title">Custom Habits &amp; 1-Tap Tracking</h3>
+                <p class="onboarding-desc">Organize your daily routine, reorder your top priorities, and log consistency without friction.</p>
+
+                <div class="onboarding-preview-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; padding: 4px 6px; background:var(--bg-surface); border-radius: var(--radius-sm);">
+                        <span style="font-weight: 600;">✦ Exercise 30 mins</span>
+                        <div style="display:flex; gap: 6px; align-items:center;">
+                            <span style="color:var(--text-muted); font-size: 0.6875rem;">Reorder: ↑ ↓</span>
+                            <span style="color:var(--danger); font-size: 0.6875rem;">Delete: 🗑</span>
+                            <span style="background:var(--accent); color:var(--bg-canvas); padding:2px 6px; border-radius:3px; font-weight:700;">✓ Checked</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="onboarding-features">
                     <div class="onboarding-feature-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span><strong>Mood &amp; Sleep Logging:</strong> Track daily ratings right below your habit checks.</span>
+                        <span><strong>Add Any Habit:</strong> Type into the habit bar (e.g., <em>"Gym"</em>, <em>"Read 20 pages"</em>, <em>"Meditate"</em>) and press <kbd>Enter</kbd>.</span>
                     </div>
                     <div class="onboarding-feature-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span><strong>60-Second Micro-Journal:</strong> Log quick daily wins and lessons without blank page intimidation.</span>
+                        <span><strong>1-Tap Checking:</strong> Tap any day cell (1..31) in the table or checkbox in Today view. Stats update in real time.</span>
                     </div>
                     <div class="onboarding-feature-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span><strong>Discipline Intelligence:</strong> Discovers how sleep duration mathematically boosts your habit consistency.</span>
+                        <span><strong>Priority Ordering:</strong> Click <strong>↑</strong> and <strong>↓</strong> to group your morning habits first and evening rituals last.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Today Column Highlighter:</strong> Today's date is always illuminated with a vertical highlight so you never lose your place.</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Slide 3: Cloud Sync Call to Action -->
+            <!-- Slide 3: Wellness Tracking (Mood & Sleep) -->
             <div class="onboarding-slide hidden" id="onboardSlide3">
+                <div class="onboarding-icon-banner" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                    </svg>
+                </div>
+                <h3 class="onboarding-title">Wellness: Daily Mood &amp; Sleep</h3>
+                <p class="onboarding-desc">Connect how you rest and feel with your capacity to sustain daily momentum.</p>
+
+                <div class="onboarding-preview-box">
+                    <div style="display:flex; justify-content:space-between; gap: 8px;">
+                        <div style="flex:1; background:var(--bg-surface); padding:6px 10px; border-radius:var(--radius-sm); font-size:0.75rem;">
+                            <span style="color:var(--text-muted); font-size:0.6875rem;">MOOD SCALE</span>
+                            <div style="font-weight:700; color:var(--accent); margin-top:2px;">1 (😞) to 10 (🤩)</div>
+                        </div>
+                        <div style="flex:1; background:var(--bg-surface); padding:6px 10px; border-radius:var(--radius-sm); font-size:0.75rem;">
+                            <span style="color:var(--text-muted); font-size:0.6875rem;">NIGHTLY SLEEP</span>
+                            <div style="font-weight:700; color:var(--accent); margin-top:2px;">3 hrs to 12+ hrs</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="onboarding-features">
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Direct Logging:</strong> In Month Grid view, pick mood &amp; sleep right beneath the habit rows; in Today view, use the quick selectors.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Dual-Axis Visual Charts:</strong> See your mood and sleep lines plotted directly against your habit completion percentage bars.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Scientific Self-Awareness:</strong> Discover exactly how many hours of sleep you need to hit peak habit discipline.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 4: Micro-Journaling & Custom Tags -->
+            <div class="onboarding-slide hidden" id="onboardSlide4">
+                <div class="onboarding-icon-banner" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                </div>
+                <h3 class="onboarding-title">Micro-Journal &amp; Custom Tags</h3>
+                <p class="onboarding-desc">Reflect on daily wins, blockers, and gratitudes in 60 seconds without blank-page intimidation.</p>
+
+                <div class="onboarding-preview-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:0.75rem; font-weight:700; color:var(--accent);">Daily Reflection &amp; Win ✏️</span>
+                        <span style="font-size:0.6875rem; color:var(--text-muted);">Auto-saved ✓</span>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:2px;">
+                        <span style="padding:2px 8px; border-radius:var(--radius-pill); background:var(--accent-subtle); color:var(--accent); font-size:0.6875rem; font-weight:600;">🏆 Daily Win</span>
+                        <span style="padding:2px 8px; border-radius:var(--radius-pill); background:var(--bg-surface); color:var(--text-secondary); font-size:0.6875rem;">🌱 Gratitude</span>
+                        <span style="padding:2px 8px; border-radius:var(--radius-pill); background:var(--bg-surface); color:var(--text-secondary); font-size:0.6875rem;">+ Add Tag</span>
+                    </div>
+                </div>
+
+                <div class="onboarding-features">
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Rename Journal Archetype:</strong> Click the journal title (or ✏️ pencil) to choose presets (<em>Gratitude</em>, <em>Work Log</em>, <em>Fitness Log</em>, <em>Stoic Diary</em>, <em>Brain Dump</em>) or type any custom title.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Custom Prompt Tags:</strong> Click <strong>+ Add Tag</strong> to create custom tags (e.g. <em>💪 Workout</em>, <em>💡 Idea</em>, <em>🍎 Diet</em>) and remove tags you don't need.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>In-Table Note Indicators:</strong> Look for the <strong>Daily Note</strong> row in the calendar grid. Days with reflections show a <strong>📝</strong> icon with tooltip snippet preview.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Day Switcher &amp; Monthly History:</strong> In Month Grid view, switch days with <strong>&lt;</strong> and <strong>&gt;</strong> or click any of the <em>"LOGGED THIS MONTH"</em> chips.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 5: Analytics & Discipline Intelligence -->
+            <div class="onboarding-slide hidden" id="onboardSlide5">
+                <div class="onboarding-icon-banner" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                </div>
+                <h3 class="onboarding-title">Discipline Intelligence &amp; Receipt</h3>
+                <p class="onboarding-desc">Uncover statistical insights into your discipline and share your monthly achievements.</p>
+
+                <div class="onboarding-preview-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
+                        <span style="font-weight:700; color:var(--accent);">✦ DISCIPLINE RECEIPT</span>
+                        <span style="font-family:'JetBrains Mono',monospace; color:var(--text-muted); font-size:0.6875rem;">OCTOBER 2026</span>
+                    </div>
+                    <div style="font-size:0.6875rem; color:var(--text-secondary); line-height:1.4;">
+                        DISCIPLINE RATE: <strong>88%</strong> · ACTIVE STREAK: <strong>14 Days</strong> · TOP: <strong>Exercise 30 mins</strong>
+                    </div>
+                </div>
+
+                <div class="onboarding-features">
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Live Momentum Metrics:</strong> Track your current active streak, best streak, total checkmarks, and overall monthly discipline rate.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Discipline Intelligence Algorithm:</strong> Automatically correlates sleep with completion to calculate your personal "Sleep Sweet Spot".</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Shareable Discipline Receipt:</strong> Click the <strong>Receipt</strong> button in the header to generate a vintage monospace receipt card.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Download &amp; Copy:</strong> Download the receipt card as a crisp PNG or copy it directly to your clipboard to share your progress.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide 6: Multi-Device Cloud Sync & Themes -->
+            <div class="onboarding-slide hidden" id="onboardSlide6">
                 <div class="onboarding-icon-banner" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
                     </svg>
                 </div>
-                <h3 class="onboarding-title">Secure Your Habits in the Cloud</h3>
-                <p class="onboarding-desc">Your habits stay private in your browser. Create a free account or sign in to sync seamlessly across your phone and computer.</p>
+                <h3 class="onboarding-title">Multi-Device Cloud Sync &amp; Themes</h3>
+                <p class="onboarding-desc">Your habits, checkmarks, reflections, and theme styling stay synchronized across your laptop and phone.</p>
+
+                <div class="onboarding-preview-box">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem;">
+                        <div style="display:inline-flex; align-items:center; gap:6px;">
+                            <span style="width:7px; height:7px; border-radius:50%; background:var(--success);"></span>
+                            <span style="font-weight:700;">Cross-Device Cloud Sync</span>
+                        </div>
+                        <span style="color:var(--text-muted); font-size:0.6875rem;">6 Curated Themes</span>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:0.6875rem; color:var(--text-secondary);">
+                        <span>✦ Obsidian</span> · <span>🌲 Forest</span> · <span>❄️ Nordic</span> · <span>☕ Espresso</span> · <span>🌙 Plum</span> · <span>📜 Paper</span>
+                    </div>
+                </div>
+
                 <div class="onboarding-features">
                     <div class="onboarding-feature-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span><strong>Local-First:</strong> Works offline anytime. Never loses your data.</span>
+                        <span><strong>100% Offline-First:</strong> Start instantly without an account. Your habits are stored safely in local browser storage.</span>
                     </div>
                     <div class="onboarding-feature-item">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span><strong>Cross-Device Sync:</strong> Check off on mobile before bed, review monthly charts on desktop.</span>
+                        <span><strong>Laptop &amp; Phone Sync:</strong> Sign in with the same account on desktop and mobile. Changes sync on login, on app resume, and in real time.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Synced Preferences:</strong> Your active theme, custom journal title, and custom tags sync to your account profile across all devices.</span>
+                    </div>
+                    <div class="onboarding-feature-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span><strong>Interactive Sync Pill:</strong> Tap the <strong>Synced ✓</strong> pill in the header anytime to trigger an immediate two-way sync refresh.</span>
                     </div>
                 </div>
-                <div class="onboarding-auth-actions" style="margin-top: 1.125rem; display: flex; flex-direction: column; gap: 8px;">
+
+                <div class="onboarding-auth-actions" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 8px;">
                     <button class="btn btn-cloud" style="width: 100%; justify-content: center; padding: 10px 14px; font-weight: 600;" onclick="onboardOpenAuth()">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
                         </svg>
                         Sign In / Create Account
                     </button>
-                    <button class="btn btn-ghost" style="width: 100%; justify-content: center;" onclick="skipOnboarding()">
-                        Continue as Guest (Offline)
+                    <button class="btn btn-ghost" style="width: 100%; justify-content: center;" onclick="closeOnboardingModal()">
+                        Start Tracking (Guest / Offline Mode) ✦
                     </button>
                 </div>
             </div>
 
+            <!-- Footer: Dots & Back / Next -->
             <div class="onboarding-footer">
                 <div class="onboarding-dots" aria-hidden="true">
-                    <span class="onboarding-dot active" id="onboardDot1"></span>
-                    <span class="onboarding-dot" id="onboardDot2"></span>
-                    <span class="onboarding-dot" id="onboardDot3"></span>
+                    <span class="onboarding-dot active" id="onboardDot1" onclick="jumpToOnboardingStep(1)"></span>
+                    <span class="onboarding-dot" id="onboardDot2" onclick="jumpToOnboardingStep(2)"></span>
+                    <span class="onboarding-dot" id="onboardDot3" onclick="jumpToOnboardingStep(3)"></span>
+                    <span class="onboarding-dot" id="onboardDot4" onclick="jumpToOnboardingStep(4)"></span>
+                    <span class="onboarding-dot" id="onboardDot5" onclick="jumpToOnboardingStep(5)"></span>
+                    <span class="onboarding-dot" id="onboardDot6" onclick="jumpToOnboardingStep(6)"></span>
                 </div>
                 <div class="onboarding-nav-btns" id="onboardingNavBtns">
-                    <button class="btn btn-ghost hidden" id="onboardPrevBtn" onclick="prevOnboardingStep()">Back</button>
-                    <button class="btn btn-primary" id="onboardNextBtn" onclick="nextOnboardingStep()">Next →</button>
+                    <button class="btn btn-ghost hidden" id="onboardPrevBtn" onclick="prevOnboardingStep()">← Previous</button>
+                    <button class="btn btn-primary" id="onboardNextBtn" onclick="nextOnboardingStep()">Next Feature →</button>
                 </div>
             </div>
         </div>
