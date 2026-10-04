@@ -2278,19 +2278,30 @@ select.mood-sleep-select option {
     position: fixed;
     z-index: 10003;
     pointer-events: auto;
-    width: 410px;
+    width: 380px;
     max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
     background: var(--bg-surface-elevated, #161b22);
     border: 1px solid var(--border-strong, #30363d);
     border-radius: var(--radius-md, 12px);
-    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
-    padding: 18px 20px;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    transition: top 0.3s cubic-bezier(0.16, 1, 0.3, 1), left 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s ease, opacity 0.2s ease;
+    transition: top 0.25s cubic-bezier(0.16, 1, 0.3, 1), left 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s ease, opacity 0.2s ease;
+}
+
+.tour-card::-webkit-scrollbar {
+    width: 4px;
+}
+
+.tour-card::-webkit-scrollbar-thumb {
+    background: var(--border-strong, #30363d);
+    border-radius: 4px;
 }
 
 .tour-card-header {

@@ -2112,6 +2112,10 @@ const INTERACTIVE_TOUR_STEPS = [
         desc: 'Switch anytime between the full 31-day Month Grid and the distraction-free Today Focus list (designed for smartphones and quick 10-second check-ins).',
         prompt: 'Click "Today" (or "Grid") to switch the view mode now!',
         actionLabel: '🎯 TRY IT NOW:',
+        beforeShow: () => {
+            const el = document.querySelector('.view-mode-toggle');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
         targetSelector: () => document.querySelector('.view-mode-toggle'),
         setupListener: (onComplete) => {
             const todayBtn = document.getElementById('viewTodayBtn');
@@ -2293,6 +2297,9 @@ function startInteractiveTour(startIndex = 0) {
 
     window.addEventListener('resize', onTourReposition);
     window.addEventListener('scroll', onTourReposition, { passive: true });
+    if ('onscrollend' in window) {
+        window.addEventListener('scrollend', onTourReposition, { passive: true });
+    }
 }
 
 function exitInteractiveTour() {
@@ -2310,6 +2317,9 @@ function exitInteractiveTour() {
 
     window.removeEventListener('resize', onTourReposition);
     window.removeEventListener('scroll', onTourReposition);
+    if ('onscrollend' in window) {
+        window.removeEventListener('scrollend', onTourReposition);
+    }
 
     localStorage.setItem('habitTracker_onboarded', 'true');
 }
@@ -2393,12 +2403,19 @@ function renderTourStep(index) {
         }
     }
 
-    // Spotlight repositioning
-    setTimeout(() => {
+    // Progressive spotlight repositioning as scrolling settles
+    const updateTourPos = () => {
+        if (!isTourActive) return;
         const targetEl = getStepTarget(step);
         setTourActiveElement(targetEl);
         positionTourSpotlight(targetEl);
-    }, 120);
+    };
+
+    updateTourPos();
+    setTimeout(updateTourPos, 60);
+    setTimeout(updateTourPos, 180);
+    setTimeout(updateTourPos, 350);
+    setTimeout(updateTourPos, 550);
 }
 
 function getStepTarget(step) {
@@ -2478,29 +2495,136 @@ function positionTourSpotlight(targetEl) {
     }
 
     if (card) {
-        const isMobile = window.innerWidth <= 680;
-        if (isMobile) {
-            return;
-        }
-
-        const cardRect = card.getBoundingClientRect();
-        const cardH = cardRect.height || 260;
-        const cardW = cardRect.width || 410;
-
-        let top = rect.bottom + 16;
-        if (top + cardH > window.innerHeight - 20) {
-            top = Math.max(20, rect.top - cardH - 16);
-        }
-
-        let left = rect.left;
-        if (left + cardW > window.innerWidth - 20) {
-            left = window.innerWidth - cardW - 20;
-        }
-        if (left < 20) left = 20;
-
-        card.style.top = `${top}px`;
-        card.style.left = `${left}px`;
+        positionTourCard(rect, card);
     }
+}
+
+function positionTourCard(rect, card) {
+    if (!card || !rect) return;
+    const isMobile = window.innerWidth <= 680;
+    if (isMobile) {
+        card.style.top = '';
+        card.style.left = '';
+        card.style.bottom = '';
+        return;
+    }
+
+    const cardRect = card.getBoundingClientRect();
+    const cardW = cardRect.width || 380;
+    const cardH = cardRect.height || 260;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 16;
+    const gap = 14;
+
+    // Helper: returns true if candidate card bounding box intersects the target element's bounding box
+    function checkCollision(cTop, cLeft, cW, cH, target) {
+        const cRight = cLeft + cW;
+        const cBottom = cTop + cH;
+        const pad = 4;
+        return !(
+            cRight < (target.left - pad) ||
+            cLeft > (target.right + pad) ||
+            cBottom < (target.top - pad) ||
+            cTop > (target.bottom + pad)
+        );
+    }
+
+    // 4 candidate directions
+    const candidates = [
+        // 1. Below target (preferred default)
+        {
+            dir: 'below',
+            top: rect.bottom + gap,
+            left: Math.max(margin, Math.min(rect.left, vw - cardW - margin))
+        },
+        // 2. Above target
+        {
+            dir: 'above',
+            top: rect.top - cardH - gap,
+            left: Math.max(margin, Math.min(rect.left, vw - cardW - margin))
+        },
+        // 3. Right of target (ideal for left icon/buttons)
+        {
+            dir: 'right',
+            top: Math.max(margin, Math.min(rect.top, vh - cardH - margin)),
+            left: rect.right + gap
+        },
+        // 4. Left of target (ideal for right toolbar controls)
+        {
+            dir: 'left',
+            top: Math.max(margin, Math.min(rect.top, vh - cardH - margin)),
+            left: rect.left - cardW - gap
+        }
+    ];
+
+    // Priority pass: find a candidate that fits in viewport AND has 0 collision with target
+    let chosen = null;
+    for (const c of candidates) {
+        const inViewport = (
+            c.top >= margin &&
+            c.top + cardH <= vh - margin &&
+            c.left >= margin &&
+            c.left + cardW <= vw - margin
+        );
+        const collides = checkCollision(c.top, c.left, cardW, cardH, rect);
+        if (inViewport && !collides) {
+            chosen = c;
+            break;
+        }
+    }
+
+    // Secondary pass: if no candidate fits 100% inside viewport,
+    // evaluate available vertical space and position outside rect
+    if (!chosen) {
+        const spaceBelow = (vh - margin) - (rect.bottom + gap);
+        const spaceAbove = (rect.top - gap) - margin;
+
+        if (spaceBelow >= spaceAbove && spaceBelow >= 120) {
+            const top = rect.bottom + gap;
+            const left = Math.max(margin, Math.min(rect.left, vw - cardW - margin));
+            chosen = { dir: 'below', top, left };
+            const overflow = (top + cardH) - (vh - margin);
+            if (overflow > 0) {
+                window.scrollBy({ top: overflow + 20, behavior: 'smooth' });
+            }
+        } else if (spaceAbove >= 120) {
+            const top = rect.top - cardH - gap;
+            const left = Math.max(margin, Math.min(rect.left, vw - cardW - margin));
+            chosen = { dir: 'above', top, left };
+            const underflow = margin - top;
+            if (underflow > 0) {
+                window.scrollBy({ top: -(underflow + 20), behavior: 'smooth' });
+            }
+        } else {
+            // Side candidate fallback if horizontal space permits
+            if (rect.right + cardW + gap <= vw - margin) {
+                chosen = candidates[2];
+            } else if (rect.left - cardW - gap >= margin) {
+                chosen = candidates[3];
+            } else {
+                chosen = candidates[0];
+            }
+        }
+    }
+
+    let finalTop = chosen.top;
+    let finalLeft = chosen.left;
+
+    // Strict safety guard: never allow finalTop to sit on top of target element
+    if (checkCollision(finalTop, finalLeft, cardW, cardH, rect)) {
+        if (rect.top >= cardH + gap + margin) {
+            finalTop = rect.top - cardH - gap;
+        } else {
+            finalTop = rect.bottom + gap;
+        }
+    }
+
+    finalLeft = Math.max(margin, Math.min(finalLeft, vw - cardW - margin));
+
+    card.style.top = `${finalTop}px`;
+    card.style.left = `${finalLeft}px`;
+    card.style.bottom = 'auto';
 }
 
 function onTourReposition() {
