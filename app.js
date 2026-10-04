@@ -2155,13 +2155,13 @@ const INTERACTIVE_TOUR_STEPS = [
         },
         targetSelector: () => {
             if (currentViewMode === 'today') {
-                return document.querySelector('.today-habit-card .today-checkbox') || document.querySelector('.today-habit-card');
+                return document.querySelector('.today-habit-card .today-checkbox-touch') || document.querySelector('.today-habit-card');
             }
             return document.querySelector('.tracker-grid tbody tr:first-child td.day-cell.today-col') || document.querySelector('.tracker-grid tbody tr:first-child');
         },
         setupListener: (onComplete) => {
             const handler = (e) => {
-                if (e.target.matches('input[type="checkbox"], .day-cell, .today-checkbox, .today-habit-card, .today-checkbox-wrap')) {
+                if (e.target.closest('.today-habit-card') || e.target.matches('input[type="checkbox"], .day-cell, .today-checkbox, .today-checkbox-touch, .today-habit-card, .today-checkbox-wrap')) {
                     onComplete('🔥 Streak logged! Your momentum is growing.');
                     fireTourConfetti();
                 }
@@ -2384,6 +2384,11 @@ function startInteractiveTour(startIndex = 0, options = {}) {
 
     window.addEventListener('resize', onTourReposition);
     window.addEventListener('scroll', onTourReposition, { passive: true });
+    window.addEventListener('orientationchange', onTourReposition);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', onTourReposition);
+        window.visualViewport.addEventListener('scroll', onTourReposition);
+    }
     if ('onscrollend' in window) {
         window.addEventListener('scrollend', onTourReposition, { passive: true });
     }
@@ -2415,6 +2420,11 @@ function exitInteractiveTour(force = false) {
 
     window.removeEventListener('resize', onTourReposition);
     window.removeEventListener('scroll', onTourReposition);
+    window.removeEventListener('orientationchange', onTourReposition);
+    if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', onTourReposition);
+        window.visualViewport.removeEventListener('scroll', onTourReposition);
+    }
     if ('onscrollend' in window) {
         window.removeEventListener('scrollend', onTourReposition);
     }
@@ -2462,15 +2472,61 @@ function prevTourStep() {
     }
 }
 
+function scrollTourStepTarget(step) {
+    if (!step) return;
+    const isMobile = window.innerWidth <= 680;
+    const targetEl = getStepTarget(step);
+
+    if (!isMobile) {
+        if (typeof step.beforeShow === 'function') {
+            try { step.beforeShow(); } catch (_) {}
+        } else if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+    }
+
+    // On mobile screens: execute custom view mode changes or setup from beforeShow
+    if (typeof step.beforeShow === 'function') {
+        try { step.beforeShow(); } catch (_) {}
+    }
+
+    if (!targetEl) return;
+
+    const vh = window.innerHeight;
+    const rect = targetEl.getBoundingClientRect();
+    
+    // Lower targets: Habit card, wellness logging, micro journal
+    const isLowerTarget = ['habit_tracking', 'wellness_tracking', 'micro_journal'].includes(step.id);
+
+    if (isLowerTarget) {
+        // Tour card docks at TOP on mobile.
+        // Scroll target so it comfortably centers in lower 65%-72% of the mobile screen.
+        const desiredTargetCenterY = Math.min(vh - 75, Math.max(260, vh * 0.68));
+        const currentTargetCenterY = rect.top + (rect.height / 2);
+        const diff = currentTargetCenterY - desiredTargetCenterY;
+        if (Math.abs(diff) > 20) {
+            window.scrollBy({ top: diff, behavior: 'smooth' });
+        }
+    } else {
+        // Tour card docks at BOTTOM on mobile.
+        // Scroll target so it comfortably centers in upper 22%-30% of the mobile screen.
+        const desiredTargetCenterY = Math.max(65, vh * 0.26);
+        const currentTargetCenterY = rect.top + (rect.height / 2);
+        const diff = currentTargetCenterY - desiredTargetCenterY;
+        if (Math.abs(diff) > 20) {
+            window.scrollBy({ top: diff, behavior: 'smooth' });
+        }
+    }
+}
+
 function renderTourStep(index) {
     cleanupCurrentTourStepListeners();
 
     const step = INTERACTIVE_TOUR_STEPS[index];
     if (!step) return;
 
-    if (typeof step.beforeShow === 'function') {
-        step.beforeShow();
-    }
+    scrollTourStepTarget(step);
 
     // Update Card UI
     const badgeEl = document.getElementById('tourStepBadge');
@@ -2606,7 +2662,7 @@ function renderTourAuthStepContent(currentUser, onComplete) {
         </div>
     `;
 
-    // Hook Enter key on inputs
+    // Hook Enter key and mobile keyboard focus auto-scroll
     const emailInput = document.getElementById('tourAuthEmail');
     const pwInput = document.getElementById('tourAuthPassword');
     if (emailInput && pwInput) {
@@ -2615,6 +2671,18 @@ function renderTourAuthStepContent(currentUser, onComplete) {
         });
         pwInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleTourAuthSubmit();
+        });
+
+        // Mobile virtual keyboard enhancement: keep focused input visible inside tour card
+        [emailInput, pwInput].forEach(inp => {
+            inp.addEventListener('focus', () => {
+                setTimeout(() => {
+                    inp.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    if (typeof onTourReposition === 'function') {
+                        onTourReposition();
+                    }
+                }, 120);
+            });
         });
     }
 }
@@ -2816,6 +2884,9 @@ function positionTourSpotlight(targetEl) {
             cutout.setAttribute('height', '0');
         }
         if (outline) outline.style.display = 'none';
+        if (card) {
+            positionTourCard(null, card);
+        }
         return;
     }
 
@@ -2847,14 +2918,39 @@ function positionTourSpotlight(targetEl) {
 }
 
 function positionTourCard(rect, card) {
-    if (!card || !rect) return;
+    if (!card) return;
     const isMobile = window.innerWidth <= 680;
     if (isMobile) {
         card.style.top = '';
         card.style.left = '';
         card.style.bottom = '';
+        card.style.right = '';
+
+        if (!rect) {
+            card.classList.remove('mobile-dock-top');
+            card.classList.add('mobile-dock-bottom');
+            return;
+        }
+
+        const vh = window.innerHeight;
+        const targetCenterY = rect.top + (rect.height / 2);
+
+        // Intelligent mobile docking:
+        // If target element is in lower half of screen, dock card at TOP so target is unobstructed.
+        // If target element is in upper half of screen, dock card at BOTTOM.
+        if (targetCenterY > vh * 0.45) {
+            card.classList.remove('mobile-dock-bottom');
+            card.classList.add('mobile-dock-top');
+        } else {
+            card.classList.remove('mobile-dock-top');
+            card.classList.add('mobile-dock-bottom');
+        }
         return;
     }
+
+    // Desktop view: clear mobile dock classes
+    card.classList.remove('mobile-dock-top', 'mobile-dock-bottom');
+    if (!rect) return;
 
     const cardRect = card.getBoundingClientRect();
     const cardW = cardRect.width || 380;

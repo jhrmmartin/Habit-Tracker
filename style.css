@@ -2239,6 +2239,7 @@ select.mood-sleep-select option {
     inset: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     pointer-events: auto;
     z-index: 10000;
 }
@@ -2889,13 +2890,173 @@ select.mood-sleep-select option {
 
 @media (max-width: 680px) {
     .tour-card {
-        left: 12px !important;
-        right: 12px !important;
+        position: fixed !important;
+        left: calc(12px + env(safe-area-inset-left, 0px)) !important;
+        right: calc(12px + env(safe-area-inset-right, 0px)) !important;
         width: auto !important;
         max-width: none !important;
-        bottom: 16px !important;
+        margin: 0 !important;
+        box-sizing: border-box;
+        max-height: calc(78vh - 24px) !important;
+        max-height: calc(78dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 14px !important;
+        padding: 12px 14px !important;
+        gap: 8px !important;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+        transition: top 0.25s cubic-bezier(0.16, 1, 0.3, 1), bottom 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s ease, opacity 0.2s ease !important;
+    }
+
+    /* Dynamic Mobile Docking: When spotlight target is in lower screen, card docks at TOP */
+    .tour-card.mobile-dock-top {
+        top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+        bottom: auto !important;
+    }
+
+    /* Dynamic Mobile Docking: When spotlight target is in upper screen, card docks at BOTTOM */
+    .tour-card.mobile-dock-bottom {
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
         top: auto !important;
-        padding: 14px 16px;
+    }
+
+    /* Fallback default before JS positioning runs */
+    .tour-card:not(.mobile-dock-top) {
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+        top: auto !important;
+    }
+
+    .tour-card-header {
+        gap: 8px;
+    }
+
+    .tour-badge-row {
+        gap: 6px;
+    }
+
+    .tour-step-badge,
+    .tour-interactive-badge {
+        font-size: 0.65625rem;
+        padding: 2.5px 7px;
+    }
+
+    .tour-close-btn {
+        min-width: 36px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 8px;
+        touch-action: manipulation;
+    }
+
+    .tour-step-title {
+        font-size: 0.9375rem;
+        line-height: 1.25;
+    }
+
+    .tour-step-desc {
+        font-size: 0.78125rem;
+        line-height: 1.4;
+    }
+
+    .tour-action-box {
+        padding: 8px 11px;
+        gap: 5px;
+        border-radius: 8px;
+    }
+
+    .tour-action-label,
+    .tour-action-status {
+        font-size: 0.65625rem;
+    }
+
+    .tour-action-prompt {
+        font-size: 0.78125rem;
+        line-height: 1.35;
+    }
+
+    .tour-card-footer {
+        padding-top: 8px;
+        gap: 6px;
+    }
+
+    .tour-skip-btn {
+        font-size: 0.71875rem;
+        padding: 6px 8px;
+        touch-action: manipulation;
+    }
+
+    .tour-nav-btns {
+        gap: 6px;
+    }
+
+    .tour-nav-btns .btn {
+        font-size: 0.78125rem;
+        padding: 7px 12px;
+        min-height: 38px;
+        touch-action: manipulation;
+    }
+
+    .tour-auth-card {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .tour-auth-tabs {
+        padding: 2px;
+    }
+
+    .tour-auth-tab {
+        padding: 6px 8px;
+        font-size: 0.75rem;
+        min-height: 34px;
+        touch-action: manipulation;
+    }
+
+    .tour-auth-input {
+        font-size: 16px !important; /* CRITICAL: 16px prevents iOS Safari from automatically zooming in */
+        padding: 8px 10px;
+        border-radius: 6px;
+    }
+
+    .tour-auth-btn {
+        padding: 9px 12px;
+        font-size: 0.8125rem;
+        min-height: 40px;
+        touch-action: manipulation;
+    }
+
+    .tour-auth-connected-box {
+        padding: 10px 12px;
+        gap: 5px;
+    }
+
+    .tour-auth-connected-email {
+        font-size: 0.71875rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .tour-interactive-badge {
+        display: none; /* Hide secondary badge on narrow 320-375px screens to keep header clean */
+    }
+
+    .tour-card {
+        padding: 10px 12px !important;
+    }
+
+    .tour-step-title {
+        font-size: 0.875rem;
+    }
+
+    .tour-step-desc {
+        font-size: 0.75rem;
+    }
+
+    .tour-nav-btns .btn {
+        padding: 6px 10px;
+        font-size: 0.75rem;
     }
 }
 
