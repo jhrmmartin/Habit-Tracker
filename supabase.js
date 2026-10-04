@@ -44,16 +44,35 @@
     let _realtimeChannel = null;
     let _isSyncing = false;
 
-    async function _getUser() {
-        if (_user) return _user;
+    function _isNetworkError(err) {
+        if (!err) return false;
+        const msg = (err.message || String(err)).toLowerCase();
+        return msg.includes('failed to fetch') ||
+               msg.includes('networkerror') ||
+               msg.includes('load failed') ||
+               msg.includes('aborted') ||
+               msg.includes('net::err');
+    }
+
+    async function _getUser(forceFresh = false) {
         const c = _getClient();
         if (!c) return null;
+        if (_user && !forceFresh) return _user;
         try {
-            const { data } = await c.auth.getSession();
-            _user = data?.session?.user || null;
+            const { data, error } = await c.auth.getSession();
+            if (error || !data?.session) {
+                try {
+                    const { data: refData } = await c.auth.refreshSession();
+                    _user = refData?.session?.user || null;
+                } catch (_) {
+                    _user = null;
+                }
+            } else {
+                _user = data.session.user || null;
+            }
             return _user;
         } catch (_) {
-            return null;
+            return _user;
         }
     }
 
@@ -76,15 +95,15 @@
 
         if (rows.length === 0) return;
 
-        // Clean up habits removed locally
+        // Clean up habits removed locally in clean batch queries
         try {
             const { data: cloudHabits } = await c.from('habits').select('id').eq('user_id', user.id);
             if (cloudHabits && cloudHabits.length > 0) {
                 const currentIds = new Set(rows.map(r => r.id));
                 const removed = cloudHabits.filter(h => !currentIds.has(h.id)).map(h => h.id);
-                for (const delId of removed) {
-                    await c.from('habit_logs').delete().eq('habit_id', delId).eq('user_id', user.id);
-                    await c.from('habits').delete().eq('id', delId).eq('user_id', user.id);
+                if (removed.length > 0) {
+                    await c.from('habit_logs').delete().eq('user_id', user.id).in('habit_id', removed);
+                    await c.from('habits').delete().eq('user_id', user.id).in('id', removed);
                 }
             }
         } catch (e) {
@@ -119,8 +138,7 @@
             logRows.push({ user_id: user.id, habit_id: habitId, log_date: logDate, completed: true });
         }
 
-        // Fetch current cloud logs for this month to detect unchecks
-        const deleteTasks = [];
+        // Fetch current cloud logs for this month to detect unchecks & batch delete per habit
         try {
             const { data: cloudLogs } = await c.from('habit_logs')
                 .select('habit_id, log_date')
@@ -128,21 +146,28 @@
                 .gte('log_date', start)
                 .lte('log_date', end);
 
-            if (cloudLogs) {
+            if (cloudLogs && cloudLogs.length > 0) {
+                const toDeleteByHabit = {};
                 for (const cl of cloudLogs) {
                     if (!localCompletedKeys.has(`${cl.habit_id}|${cl.log_date}`)) {
-                        deleteTasks.push(
-                            c.from('habit_logs').delete()
-                                .eq('user_id', user.id)
-                                .eq('habit_id', cl.habit_id)
-                                .eq('log_date', cl.log_date)
-                        );
+                        if (!toDeleteByHabit[cl.habit_id]) toDeleteByHabit[cl.habit_id] = [];
+                        toDeleteByHabit[cl.habit_id].push(cl.log_date);
+                    }
+                }
+                for (const [hId, dates] of Object.entries(toDeleteByHabit)) {
+                    if (dates.length > 0) {
+                        await c.from('habit_logs').delete()
+                            .eq('user_id', user.id)
+                            .eq('habit_id', hId)
+                            .in('log_date', dates);
                     }
                 }
             }
-        } catch (_) {}
+        } catch (delErr) {
+            console.warn('[Sync] Non-critical habit log delete cleanup:', delErr?.message);
+        }
 
-        // 2. wellness_logs rows (MUST have strictly uniform keys for PostgREST upsert)
+        // 2. wellness_logs rows (strictly uniform keys for PostgREST upsert)
         const wellMap = {};
         for (const [key, val] of Object.entries(stored.moodSleep || {})) {
             const dash = key.lastIndexOf('-');
@@ -167,6 +192,7 @@
         }
         const wellRows = Object.values(wellMap).filter(w => w.mood !== null || w.sleep_hours !== null);
 
+        // Fetch current cloud wellness logs to detect removals & delete in single batch
         try {
             const { data: cloudWellness } = await c.from('wellness_logs')
                 .select('log_date')
@@ -174,40 +200,31 @@
                 .gte('log_date', start)
                 .lte('log_date', end);
 
-            if (cloudWellness) {
+            if (cloudWellness && cloudWellness.length > 0) {
+                const wellnessDatesToDelete = [];
                 for (const cw of cloudWellness) {
                     if (!wellMap[cw.log_date]) {
-                        deleteTasks.push(
-                            c.from('wellness_logs').delete()
-                                .eq('user_id', user.id)
-                                .eq('log_date', cw.log_date)
-                        );
+                        wellnessDatesToDelete.push(cw.log_date);
                     }
                 }
-            }
-        } catch (_) {}
-
-        if (deleteTasks.length > 0) {
-            try {
-                await Promise.all(deleteTasks);
-            } catch (delErr) {
-                console.warn('[Sync] Non-critical delete cleanup:', delErr?.message);
-            }
-        }
-
-        // 3. Upsert active rows
-        const upsertTasks = [];
-        if (logRows.length)  upsertTasks.push(c.from('habit_logs').upsert(logRows,  { onConflict: 'user_id,habit_id,log_date' }));
-        if (wellRows.length) upsertTasks.push(c.from('wellness_logs').upsert(wellRows, { onConflict: 'user_id,log_date' }));
-
-        if (upsertTasks.length) {
-            const results = await Promise.all(upsertTasks);
-            for (const r of results) {
-                if (r.error) {
-                    console.error('[Sync] Upsert error on table:', r.error);
-                    throw r.error;
+                if (wellnessDatesToDelete.length > 0) {
+                    await c.from('wellness_logs').delete()
+                        .eq('user_id', user.id)
+                        .in('log_date', wellnessDatesToDelete);
                 }
             }
+        } catch (wErr) {
+            console.warn('[Sync] Non-critical wellness delete cleanup:', wErr?.message);
+        }
+
+        // 3. Upsert active rows (sequential to maintain socket stability)
+        if (logRows.length) {
+            const { error: logErr } = await c.from('habit_logs').upsert(logRows, { onConflict: 'user_id,habit_id,log_date' });
+            if (logErr) throw logErr;
+        }
+        if (wellRows.length) {
+            const { error: wellErr } = await c.from('wellness_logs').upsert(wellRows, { onConflict: 'user_id,log_date' });
+            if (wellErr) throw wellErr;
         }
 
         // 4. journal_logs rows (gracefully handle if table not created yet)
@@ -230,15 +247,17 @@
                 }
             } catch (_) {}
         }
-
-        // Also sync user preferences (theme, journal tags, journal title, journal backup)
-        await _pushUserPreferences();
     }
 
-    async function _pushUserPreferences() {
+    let _lastPreferencesPush = 0;
+
+    async function _pushUserPreferences(force = false) {
+        const now = Date.now();
+        if (!force && (now - _lastPreferencesPush < 45000)) return;
         const c = _getClient(), user = await _getUser();
         if (!c || !user) return;
         try {
+            _lastPreferencesPush = now;
             const theme = window.getTheme ? window.getTheme() : (localStorage.getItem('habitTracker_theme') || 'obsidian');
             const journalTitle = window.getJournalTitle ? window.getJournalTitle() : (localStorage.getItem('habitTracker_journalTitle') || 'Daily Reflection & Win');
             const journalPills = window.getJournalPills ? window.getJournalPills() : _json(localStorage.getItem('habitTracker_journalPills_v1'), null);
@@ -439,8 +458,20 @@
 
             _setSyncStatus('synced');
         } catch (e) {
-            console.error('[Sync] Full sync failed:', e);
-            _setSyncStatus('error');
+            console.warn('[Sync] Full sync notice:', e);
+            const msg = e?.message || 'Sync failed';
+            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                _setSyncStatus('offline');
+            } else if (_isNetworkError(e)) {
+                _setSyncStatus('error', msg);
+                setTimeout(() => {
+                    if (typeof navigator === 'undefined' || navigator.onLine) {
+                        _fullSyncFromCloud(year, month, forceReload);
+                    }
+                }, 3000);
+            } else {
+                _setSyncStatus('error', msg);
+            }
         }
     }
 
@@ -495,8 +526,9 @@
     function _debouncedPull() {
         clearTimeout(_pullDebounceTimer);
         _pullDebounceTimer = setTimeout(() => {
+            if (typeof navigator !== 'undefined' && !navigator.onLine) return;
             _pullLatestFromCloud();
-        }, 350);
+        }, 800);
     }
 
     // ── Sign-in Handler ──────────────────────────────────────
@@ -554,6 +586,10 @@
         _setSyncStatus('syncing');
         _debounceTimer = setTimeout(async () => {
             try {
+                if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                    _setSyncStatus('offline');
+                    return;
+                }
                 const user = await _getUser();
                 if (!user) { _setSyncStatus('offline'); return; }
                 const habits = window.getHabits ? window.getHabits() : [];
@@ -563,21 +599,35 @@
                 _lastSyncErrorMsg = '';
                 _setSyncStatus('synced');
             } catch (e) {
-                console.error('[Sync] Background sync failed:', e);
+                console.warn('[Sync] Background sync notice:', e);
                 _lastSyncErrorMsg = e?.message || 'Sync failed';
-                if (_syncRetryCount < 2) {
-                    _syncRetryCount++;
-                    console.log(`[Sync] Retrying background sync (attempt ${_syncRetryCount})...`);
-                    setTimeout(() => _triggerSync(year, month), 2000);
-                } else {
-                    _setSyncStatus('error', _lastSyncErrorMsg);
+                if (_isNetworkError(e)) {
+                    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                        _setSyncStatus('offline');
+                        return;
+                    }
+                    if (_syncRetryCount < 3) {
+                        _syncRetryCount++;
+                        const delay = _syncRetryCount * 2500;
+                        console.log(`[Sync] Network connection hiccup, auto-retrying in ${delay}ms (attempt ${_syncRetryCount})...`);
+                        setTimeout(() => _triggerSync(year, month), delay);
+                        return;
+                    }
                 }
+                _setSyncStatus('error', _lastSyncErrorMsg);
             }
-        }, 600);
+        }, 800);
     }
 
     async function syncNow() {
-        const user = await _getUser();
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            _setSyncStatus('offline');
+            if (typeof showError === 'function') {
+                showError('You appear to be offline. Local changes will auto-sync once reconnected.');
+            }
+            return;
+        }
+        const user = await _getUser(true);
         if (!user) {
             _openAuthModal();
             return;
@@ -591,13 +641,24 @@
             await _pushHabits(habits);
             await _pushMonthData(year, month);
             await _pullLatestFromCloud();
+            await _pushUserPreferences(true);
             _syncRetryCount = 0;
             _lastSyncErrorMsg = '';
             _setSyncStatus('synced');
+            if (typeof showSuccess === 'function') {
+                showSuccess('Synced with cloud ✓');
+            }
         } catch (e) {
             console.error('[Sync] Manual sync failed:', e);
             _lastSyncErrorMsg = e?.message || 'Sync failed';
             _setSyncStatus('error', _lastSyncErrorMsg);
+            if (typeof showError === 'function') {
+                if (_isNetworkError(e)) {
+                    showError('Sync connection issue. If using Brave Shields or an adblocker, please allow supabase.co or tap to retry.');
+                } else {
+                    showError(`Sync issue: ${_lastSyncErrorMsg}`);
+                }
+            }
         }
     }
 
@@ -646,11 +707,19 @@
         dot.className = `sync-dot ${cls}`;
         text.textContent = label;
         if (key === 'error') {
-            wrap.title = detailMsg ? `Sync issue: ${detailMsg}. Tap to retry.` : 'Sync error. Tap to retry.';
+            if (_isNetworkError({ message: detailMsg })) {
+                text.textContent = 'Connection issue (retry)';
+                wrap.title = 'Connection problem or request blocked (e.g. Brave Shields/adblocker). Tap to retry.';
+            } else {
+                text.textContent = label;
+                wrap.title = detailMsg ? `Sync issue: ${detailMsg}. Tap to retry.` : 'Sync error. Tap to retry.';
+            }
         } else if (key === 'synced') {
             wrap.title = 'All changes synced with cloud in real-time.';
         } else if (key === 'syncing') {
             wrap.title = 'Synchronizing with cloud...';
+        } else if (key === 'offline') {
+            wrap.title = 'Offline mode. Changes saved locally and will auto-sync when online.';
         }
     }
 
@@ -854,6 +923,22 @@
             if (_user) {
                 _debouncedPull();
             }
+        });
+
+        // Listen for online / offline events to seamlessly resume syncing
+        window.addEventListener('online', () => {
+            console.log('[Sync] Network connection restored. Auto-syncing pending changes...');
+            const year  = window.getTrackerYear  ? window.getTrackerYear()  : new Date().getFullYear();
+            const month = window.getTrackerMonth ? window.getTrackerMonth() : new Date().getMonth();
+            _setSyncStatus('syncing');
+            setTimeout(() => {
+                _triggerSync(year, month);
+            }, 1200);
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('[Sync] Device went offline.');
+            _setSyncStatus('offline');
         });
 
         // Check for an existing Supabase session (returning user on mobile/desktop)
