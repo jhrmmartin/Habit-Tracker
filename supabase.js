@@ -63,15 +63,24 @@
         const c = _getClient(), user = await _getUser();
         if (!c || !user || !Array.isArray(habitsArr) || habitsArr.length === 0) return;
 
-        const rows = habitsArr.map((h, i) => ({
-            id: h.id, user_id: user.id, name: h.name, display_order: i
-        }));
+        const seenIds = new Set();
+        const rows = [];
+        habitsArr.forEach((h, i) => {
+            if (!h) return;
+            const id = String((typeof h === 'object' && h.id) || ('h_' + (i + 1)));
+            if (seenIds.has(id)) return;
+            seenIds.add(id);
+            const name = String((typeof h === 'object' && h.name) || h || 'Habit ' + (i + 1));
+            rows.push({ id, user_id: user.id, name, display_order: i });
+        });
+
+        if (rows.length === 0) return;
 
         // Clean up habits removed locally
         try {
             const { data: cloudHabits } = await c.from('habits').select('id').eq('user_id', user.id);
             if (cloudHabits && cloudHabits.length > 0) {
-                const currentIds = new Set(habitsArr.map(h => h.id));
+                const currentIds = new Set(rows.map(r => r.id));
                 const removed = cloudHabits.filter(h => !currentIds.has(h.id)).map(h => h.id);
                 for (const delId of removed) {
                     await c.from('habit_logs').delete().eq('habit_id', delId).eq('user_id', user.id);
@@ -133,7 +142,7 @@
             }
         } catch (_) {}
 
-        // 2. wellness_logs rows
+        // 2. wellness_logs rows (MUST have strictly uniform keys for PostgREST upsert)
         const wellMap = {};
         for (const [key, val] of Object.entries(stored.moodSleep || {})) {
             const dash = key.lastIndexOf('-');
@@ -141,11 +150,22 @@
             const day = parseInt(key.substring(dash + 1));
             if (!metric || isNaN(day) || day < 1 || day > daysCount) continue;
             const logDate = _toDate(year, month, day);
-            if (!wellMap[logDate]) wellMap[logDate] = { user_id: user.id, log_date: logDate };
-            if (metric === 'Mood' && val !== '') wellMap[logDate].mood = parseInt(val);
-            if (metric === 'Hours of Sleep' && val !== '') wellMap[logDate].sleep_hours = parseInt(val);
+            if (!wellMap[logDate]) {
+                wellMap[logDate] = {
+                    user_id: user.id,
+                    log_date: logDate,
+                    mood: null,
+                    sleep_hours: null
+                };
+            }
+            if (metric === 'Mood' && val !== '' && !isNaN(parseInt(val, 10))) {
+                wellMap[logDate].mood = parseInt(val, 10);
+            }
+            if (metric === 'Hours of Sleep' && val !== '' && !isNaN(parseInt(val, 10))) {
+                wellMap[logDate].sleep_hours = parseInt(val, 10);
+            }
         }
-        const wellRows = Object.values(wellMap);
+        const wellRows = Object.values(wellMap).filter(w => w.mood !== null || w.sleep_hours !== null);
 
         try {
             const { data: cloudWellness } = await c.from('wellness_logs')
@@ -168,7 +188,11 @@
         } catch (_) {}
 
         if (deleteTasks.length > 0) {
-            await Promise.all(deleteTasks);
+            try {
+                await Promise.all(deleteTasks);
+            } catch (delErr) {
+                console.warn('[Sync] Non-critical delete cleanup:', delErr?.message);
+            }
         }
 
         // 3. Upsert active rows
@@ -178,10 +202,15 @@
 
         if (upsertTasks.length) {
             const results = await Promise.all(upsertTasks);
-            for (const r of results) { if (r.error) throw r.error; }
+            for (const r of results) {
+                if (r.error) {
+                    console.error('[Sync] Upsert error on table:', r.error);
+                    throw r.error;
+                }
+            }
         }
 
-        // 4. journal_logs rows
+        // 4. journal_logs rows (gracefully handle if table not created yet)
         const journalRows = [];
         for (const [dayKey, entryText] of Object.entries(stored.journal || {})) {
             const day = parseInt(dayKey);
@@ -195,7 +224,10 @@
 
         if (journalRows.length) {
             try {
-                await c.from('journal_logs').upsert(journalRows, { onConflict: 'user_id,log_date' });
+                const jRes = await c.from('journal_logs').upsert(journalRows, { onConflict: 'user_id,log_date' });
+                if (jRes.error) {
+                    console.warn('[Sync] journal_logs skipped (table may not exist in database):', jRes.error.message);
+                }
             } catch (_) {}
         }
 
@@ -503,9 +535,6 @@
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'wellness_logs', filter: `user_id=eq.${user.id}` }, () => {
                     _debouncedPull();
                 })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'journal_logs', filter: `user_id=eq.${user.id}` }, () => {
-                    _debouncedPull();
-                })
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         console.log('[Sync] Realtime live cross-device sync active');
@@ -517,6 +546,8 @@
     }
 
     // ── Debounced background sync (called after data input) ──
+    let _syncRetryCount = 0;
+    let _lastSyncErrorMsg = '';
 
     function _triggerSync(year, month) {
         clearTimeout(_debounceTimer);
@@ -526,16 +557,23 @@
                 const user = await _getUser();
                 if (!user) { _setSyncStatus('offline'); return; }
                 const habits = window.getHabits ? window.getHabits() : [];
-                await Promise.all([
-                    _pushHabits(habits),
-                    _pushMonthData(year, month)
-                ]);
+                await _pushHabits(habits);
+                await _pushMonthData(year, month);
+                _syncRetryCount = 0;
+                _lastSyncErrorMsg = '';
                 _setSyncStatus('synced');
             } catch (e) {
                 console.error('[Sync] Background sync failed:', e);
-                _setSyncStatus('error');
+                _lastSyncErrorMsg = e?.message || 'Sync failed';
+                if (_syncRetryCount < 2) {
+                    _syncRetryCount++;
+                    console.log(`[Sync] Retrying background sync (attempt ${_syncRetryCount})...`);
+                    setTimeout(() => _triggerSync(year, month), 2000);
+                } else {
+                    _setSyncStatus('error', _lastSyncErrorMsg);
+                }
             }
-        }, 750);
+        }, 600);
     }
 
     async function syncNow() {
@@ -550,15 +588,16 @@
             const month = window.getTrackerMonth ? window.getTrackerMonth() : new Date().getMonth();
             const habits = window.getHabits ? window.getHabits() : [];
 
-            await Promise.all([
-                _pushHabits(habits),
-                _pushMonthData(year, month)
-            ]);
+            await _pushHabits(habits);
+            await _pushMonthData(year, month);
             await _pullLatestFromCloud();
+            _syncRetryCount = 0;
+            _lastSyncErrorMsg = '';
             _setSyncStatus('synced');
         } catch (e) {
             console.error('[Sync] Manual sync failed:', e);
-            _setSyncStatus('error');
+            _lastSyncErrorMsg = e?.message || 'Sync failed';
+            _setSyncStatus('error', _lastSyncErrorMsg);
         }
     }
 
@@ -597,7 +636,7 @@
         offline: { cls: 'offline', text: 'Offline mode' }
     };
 
-    function _setSyncStatus(key) {
+    function _setSyncStatus(key, detailMsg = '') {
         const dot  = document.getElementById('syncDot');
         const text = document.getElementById('syncStatusText');
         const wrap = document.getElementById('syncStatusIndicator');
@@ -606,6 +645,13 @@
         wrap.classList.remove('hidden');
         dot.className = `sync-dot ${cls}`;
         text.textContent = label;
+        if (key === 'error') {
+            wrap.title = detailMsg ? `Sync issue: ${detailMsg}. Tap to retry.` : 'Sync error. Tap to retry.';
+        } else if (key === 'synced') {
+            wrap.title = 'All changes synced with cloud in real-time.';
+        } else if (key === 'syncing') {
+            wrap.title = 'Synchronizing with cloud...';
+        }
     }
 
     // ── Auth UI State ────────────────────────────────────────
@@ -741,6 +787,9 @@
         onMonthChange:       _onMonthChange,
         deleteHabitFromCloud: _deleteHabitFromCloud,
         syncNow:             syncNow,
+        pushHabits:          _pushHabits,
+        pushMonthData:       _pushMonthData,
+        fullSyncFromCloud:   _fullSyncFromCloud,
         pushUserPreferences: _pushUserPreferences,
         pullLatestFromCloud: _pullLatestFromCloud,
         getUser:             _getUser,

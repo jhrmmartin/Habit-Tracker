@@ -39,13 +39,22 @@
 //    primary key (user_id, log_date)
 //  );
 //
-//  alter table public.habits      enable row level security;
-//  alter table public.habit_logs  enable row level security;
+//  create table public.journal_logs (
+//    user_id     uuid    not null default auth.uid() references auth.users on delete cascade,
+//    log_date    date    not null,
+//    entry_text  text    not null,
+//    primary key (user_id, log_date)
+//  );
+//
+//  alter table public.habits        enable row level security;
+//  alter table public.habit_logs    enable row level security;
 //  alter table public.wellness_logs enable row level security;
+//  alter table public.journal_logs  enable row level security;
 //
 //  create policy "own_habits"   on public.habits        for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 //  create policy "own_logs"     on public.habit_logs    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 //  create policy "own_wellness" on public.wellness_logs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+//  create policy "own_journal"  on public.journal_logs  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 //
 // ─────────────────────────────────────────────────────────────
 
