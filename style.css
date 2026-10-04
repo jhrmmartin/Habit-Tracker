@@ -2487,6 +2487,204 @@ select.mood-sleep-select option {
     100% { box-shadow: 0 0 0 0 rgba(35, 131, 226, 0); }
 }
 
+/* Enforced Tour Lock & Hidden States */
+.tour-close-btn.hidden,
+.tour-skip-btn.hidden {
+    display: none !important;
+}
+
+.tour-btn-locked {
+    opacity: 0.75;
+    background: var(--bg-surface-elevated, #21262d) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border-subtle) !important;
+    cursor: pointer;
+}
+
+/* Inline Tour Auth Component (Mandatory Account Step) */
+.tour-custom-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.tour-auth-card {
+    background: var(--bg-surface, #0d1117);
+    border: 1px solid var(--border-subtle, #30363d);
+    border-radius: var(--radius-sm, 8px);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tour-auth-tabs {
+    display: flex;
+    background: var(--bg-surface-elevated, #161b22);
+    border: 1px solid var(--border-subtle, #30363d);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.tour-auth-tab {
+    flex: 1;
+    padding: 5px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+}
+
+.tour-auth-tab.active {
+    background: var(--accent, #2383e2);
+    color: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.tour-auth-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tour-auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    text-align: left;
+}
+
+.tour-auth-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.tour-auth-input {
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 0.8125rem;
+    background: var(--bg-surface-elevated, #161b22);
+    border: 1px solid var(--border-subtle, #30363d);
+    border-radius: 6px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    box-sizing: border-box;
+}
+
+.tour-auth-input:focus {
+    border-color: var(--accent, #2383e2);
+    box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.25);
+}
+
+.tour-auth-feedback {
+    font-size: 0.6875rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    line-height: 1.4;
+}
+
+.tour-auth-feedback.error {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.tour-auth-feedback.success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.tour-auth-btn {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.tour-auth-footer-help {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.tour-auth-footer-help a {
+    color: var(--accent, #2383e2);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.tour-auth-connected-box {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: var(--radius-sm, 8px);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tour-auth-connected-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #10b981;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.tour-auth-check-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #10b981;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.tour-auth-connected-email {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.tour-auth-connected-note {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin: 0;
+}
+
+.auth-modal-overlay {
+    z-index: 10010 !important;
+}
+
+@keyframes tourFieldShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+}
+
+.tour-field-shake {
+    animation: tourFieldShake 0.4s ease;
+}
+
 .tour-confetti-canvas {
     position: fixed;
     inset: 0;

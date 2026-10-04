@@ -147,15 +147,15 @@
             <!-- Header: Step badge, interactive pill, exit button -->
             <div class="tour-card-header">
                 <div class="tour-badge-row">
-                    <span class="tour-step-badge" id="tourStepBadge">Step 1 of 7</span>
+                    <span class="tour-step-badge" id="tourStepBadge">Step 1 of 8</span>
                     <span class="tour-interactive-badge">⚡ Interactive Guide</span>
                 </div>
-                <button class="tour-close-btn" onclick="exitInteractiveTour()" title="Exit Tour (Esc)" aria-label="Exit tour">✕</button>
+                <button class="tour-close-btn" id="tourCloseBtn" onclick="exitInteractiveTour()" title="Exit Tour (Esc)" aria-label="Exit tour">✕</button>
             </div>
 
             <!-- Progress Track -->
             <div class="tour-progress-track" aria-hidden="true">
-                <div class="tour-progress-bar" id="tourProgressBar" style="width: 14%;"></div>
+                <div class="tour-progress-bar" id="tourProgressBar" style="width: 12.5%;"></div>
             </div>
 
             <!-- Tour Step Content -->
@@ -171,11 +171,14 @@
                     </div>
                     <div class="tour-action-prompt" id="tourActionPrompt">Tap the emoji icon ⚡ or click the title to personalize!</div>
                 </div>
+
+                <!-- Custom Step Insert (e.g. Inline Sign-Up / Auth Form for mandatory step) -->
+                <div class="tour-custom-slot" id="tourCustomSlot"></div>
             </div>
 
             <!-- Footer Navigation -->
             <div class="tour-card-footer">
-                <button class="btn btn-ghost tour-skip-btn" onclick="exitInteractiveTour()">Skip Tour</button>
+                <button class="btn btn-ghost tour-skip-btn" id="tourSkipBtn" onclick="exitInteractiveTour()">Skip Tour</button>
                 <div class="tour-nav-btns">
                     <button class="btn btn-ghost" id="tourPrevBtn" onclick="prevTourStep()">← Back</button>
                     <button class="btn btn-primary" id="tourNextBtn" onclick="nextTourStep()">Next Step →</button>

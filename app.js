@@ -2244,10 +2244,10 @@ const INTERACTIVE_TOUR_STEPS = [
         }
     },
     {
-        id: 'receipt_and_sync',
-        title: 'Discipline Receipt & Cloud Sync',
-        desc: 'Generate a vintage monospace discipline receipt of your monthly stats to share, and sign in to keep all your devices in perfect real-time sync!',
-        prompt: 'Click "Receipt" to see your monthly summary, or tap "Finish Tour 🎉" to begin!',
+        id: 'receipt',
+        title: 'Discipline Receipt',
+        desc: 'Generate a vintage monospace discipline receipt of your monthly stats, active streaks, and overall completion rate to share or celebrate.',
+        prompt: 'Click "Receipt" to preview your monthly discipline summary!',
         actionLabel: '🎯 TRY IT NOW:',
         beforeShow: () => {
             const btn = document.querySelector('.btn-receipt');
@@ -2257,7 +2257,7 @@ const INTERACTIVE_TOUR_STEPS = [
         setupListener: (onComplete) => {
             const btn = document.querySelector('.btn-receipt');
             const handler = () => {
-                onComplete('🏆 Receipt opened! You are all set.');
+                onComplete('🏆 Receipt generated! Monospace & shareable.');
                 fireTourConfetti();
             };
             if (btn) btn.addEventListener('click', handler, { once: true });
@@ -2265,19 +2265,71 @@ const INTERACTIVE_TOUR_STEPS = [
                 if (btn) btn.removeEventListener('click', handler);
             };
         }
+    },
+    {
+        id: 'cloud_sync_auth',
+        title: 'Cloud Sync & Account Setup',
+        desc: 'Synchronize your habits, streaks, and reflections across your laptop and smartphone in real time. Create your free account below to activate cloud backup.',
+        prompt: 'Create your account or sign in below to finish onboarding!',
+        actionLabel: '⚡ MANDATORY SETUP:',
+        isAuthStep: true,
+        beforeShow: () => {
+            const authPill = document.getElementById('authOpenBtn') || document.getElementById('userBadge') || document.querySelector('.toolbar-group-right');
+            if (authPill) authPill.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+        targetSelector: () => document.getElementById('authOpenBtn') || document.getElementById('userBadge') || document.querySelector('.toolbar-group-right'),
+        setupListener: (onComplete) => {
+            const currentUser = window.SupaSync?.getCurrentUser ? window.SupaSync.getCurrentUser() : null;
+            if (currentUser) {
+                onComplete(`✓ Connected as ${currentUser.email}! Sync active.`);
+                renderTourAuthStepContent(currentUser);
+                return;
+            }
+
+            renderTourAuthStepContent(null, onComplete);
+
+            const authHandler = (user) => {
+                if (user) {
+                    onComplete(`✓ Connected as ${user.email}! Sync active.`);
+                    renderTourAuthStepContent(user);
+                    fireTourConfetti();
+                }
+            };
+            window.onTourUserAuthenticated = authHandler;
+
+            return () => {
+                window.onTourUserAuthenticated = null;
+            };
+        }
     }
 ];
 
-function initOnboarding() {
-    const onboarded = localStorage.getItem('habitTracker_onboarded');
-    if (!onboarded) {
-        setTimeout(() => {
-            startInteractiveTour(0);
-        }, 700);
-    }
+let isTourEnforced = false;
+let tourAuthMode = 'signup';
+
+async function initOnboarding() {
+    setTimeout(async () => {
+        let user = null;
+        if (window.SupaSync?.getUser) {
+            try {
+                user = await window.SupaSync.getUser();
+            } catch (_) {}
+        }
+
+        // If user is NOT authenticated, onboarding is mandatory / enforced!
+        if (!user) {
+            startInteractiveTour(0, { enforced: true });
+        } else {
+            // Already signed in: only launch if not yet onboarded
+            const onboarded = localStorage.getItem('habitTracker_onboarded');
+            if (!onboarded) {
+                startInteractiveTour(0, { enforced: false });
+            }
+        }
+    }, 700);
 }
 
-function startInteractiveTour(startIndex = 0) {
+function startInteractiveTour(startIndex = 0, options = {}) {
     // Close any other modal dialogs before launching the tour
     closeReceiptModal();
     closeDayNoteModal();
@@ -2285,12 +2337,33 @@ function startInteractiveTour(startIndex = 0) {
     closeCustomizeModal();
     closeHabitIconPicker();
 
+    const currentUser = window.SupaSync?.getCurrentUser ? window.SupaSync.getCurrentUser() : null;
+    isTourEnforced = options.enforced !== undefined ? options.enforced : (!currentUser);
+
     isTourActive = true;
     currentTourStepIndex = Math.max(0, Math.min(INTERACTIVE_TOUR_STEPS.length - 1, startIndex));
 
     const overlay = document.getElementById('interactiveTourOverlay');
     if (overlay) {
         overlay.classList.remove('hidden');
+    }
+
+    const closeBtn = document.getElementById('tourCloseBtn');
+    if (closeBtn) {
+        if (isTourEnforced) {
+            closeBtn.classList.add('hidden');
+        } else {
+            closeBtn.classList.remove('hidden');
+        }
+    }
+
+    const skipBtn = document.getElementById('tourSkipBtn');
+    if (skipBtn) {
+        if (isTourEnforced) {
+            skipBtn.classList.add('hidden');
+        } else {
+            skipBtn.classList.remove('hidden');
+        }
     }
 
     renderTourStep(currentTourStepIndex);
@@ -2302,8 +2375,19 @@ function startInteractiveTour(startIndex = 0) {
     }
 }
 
-function exitInteractiveTour() {
+function exitInteractiveTour(force = false) {
+    if (isTourEnforced && !force) {
+        const user = window.SupaSync?.getCurrentUser ? window.SupaSync.getCurrentUser() : null;
+        if (!user) {
+            // Cannot dismiss enforced tour until authenticated
+            currentTourStepIndex = INTERACTIVE_TOUR_STEPS.length - 1;
+            renderTourStep(currentTourStepIndex);
+            return;
+        }
+    }
+
     isTourActive = false;
+    isTourEnforced = false;
     cleanupCurrentTourStepListeners();
     setTourActiveElement(null);
 
@@ -2329,10 +2413,30 @@ function nextTourStep() {
         currentTourStepIndex++;
         renderTourStep(currentTourStepIndex);
     } else {
+        // Final step: verify user is authenticated
+        const user = window.SupaSync?.getCurrentUser ? window.SupaSync.getCurrentUser() : null;
+        if (!user && isTourEnforced) {
+            const emailInput = document.getElementById('tourAuthEmail');
+            const formCard = document.getElementById('tourAuthCard');
+            if (formCard) {
+                formCard.classList.remove('tour-field-shake');
+                void formCard.offsetWidth;
+                formCard.classList.add('tour-field-shake');
+            }
+            if (emailInput) emailInput.focus();
+            const feedback = document.getElementById('tourAuthFeedback');
+            if (feedback) {
+                feedback.textContent = 'Please create your account or sign in to complete onboarding and enable sync across devices!';
+                feedback.className = 'tour-auth-feedback error';
+                feedback.classList.remove('hidden');
+            }
+            return;
+        }
+
         fireTourConfetti();
-        markTourActionCompleted('🏆 Tour Complete! Ready to crush your habits.');
+        markTourActionCompleted('🏆 Setup Complete! Your habits are synced.');
         setTimeout(() => {
-            exitInteractiveTour();
+            exitInteractiveTour(true);
         }, 1200);
     }
 }
@@ -2382,6 +2486,11 @@ function renderTourStep(index) {
     const actionPrompt = document.getElementById('tourActionPrompt');
     if (actionPrompt) actionPrompt.textContent = step.prompt;
 
+    const customSlot = document.getElementById('tourCustomSlot');
+    if (customSlot && !step.isAuthStep) {
+        customSlot.innerHTML = '';
+    }
+
     const prevBtn = document.getElementById('tourPrevBtn');
     if (prevBtn) {
         prevBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
@@ -2390,7 +2499,20 @@ function renderTourStep(index) {
     const nextBtn = document.getElementById('tourNextBtn');
     if (nextBtn) {
         nextBtn.classList.remove('tour-next-pulse');
-        nextBtn.textContent = (index === INTERACTIVE_TOUR_STEPS.length - 1) ? 'Finish Tour 🎉' : 'Next Step →';
+        if (index === INTERACTIVE_TOUR_STEPS.length - 1) {
+            const isAuth = !!(window.SupaSync?.getCurrentUser && window.SupaSync.getCurrentUser());
+            if (isAuth) {
+                nextBtn.textContent = 'Finish & Enter Workspace 🎉';
+                nextBtn.classList.remove('tour-btn-locked');
+                nextBtn.classList.add('tour-next-pulse');
+            } else {
+                nextBtn.textContent = 'Create Account to Finish 🔒';
+                nextBtn.classList.add('tour-btn-locked');
+            }
+        } else {
+            nextBtn.textContent = 'Next Step →';
+            nextBtn.classList.remove('tour-btn-locked');
+        }
     }
 
     // Attach step listener
@@ -2416,6 +2538,174 @@ function renderTourStep(index) {
     setTimeout(updateTourPos, 180);
     setTimeout(updateTourPos, 350);
     setTimeout(updateTourPos, 550);
+}
+
+function renderTourAuthStepContent(currentUser, onComplete) {
+    const slot = document.getElementById('tourCustomSlot');
+    if (!slot) return;
+
+    if (currentUser) {
+        slot.innerHTML = `
+            <div class="tour-auth-connected-box">
+                <div class="tour-auth-connected-header">
+                    <span class="tour-auth-check-icon">✓</span>
+                    <strong>Cloud Sync Connected</strong>
+                </div>
+                <div class="tour-auth-connected-email">${sanitizeHTML(currentUser.email || 'Active User')}</div>
+                <p class="tour-auth-connected-note">Your habits, streaks, and reflections sync across laptop and smartphone in real time.</p>
+            </div>
+        `;
+        const nextBtn = document.getElementById('tourNextBtn');
+        if (nextBtn) {
+            nextBtn.textContent = 'Finish & Enter Workspace 🎉';
+            nextBtn.classList.remove('tour-btn-locked');
+            nextBtn.classList.add('tour-next-pulse');
+        }
+        return;
+    }
+
+    slot.innerHTML = `
+        <div class="tour-auth-card" id="tourAuthCard">
+            <div class="tour-auth-tabs">
+                <button type="button" class="tour-auth-tab ${tourAuthMode === 'signup' ? 'active' : ''}" id="tourAuthSignupTab" onclick="setTourAuthMode('signup')">Create Account</button>
+                <button type="button" class="tour-auth-tab ${tourAuthMode === 'signin' ? 'active' : ''}" id="tourAuthSigninTab" onclick="setTourAuthMode('signin')">Sign In</button>
+            </div>
+            <div class="tour-auth-fields">
+                <div class="tour-auth-field">
+                    <label class="tour-auth-label" for="tourAuthEmail">Email Address</label>
+                    <input type="email" id="tourAuthEmail" class="tour-auth-input" placeholder="you@example.com" autocomplete="email" required>
+                </div>
+                <div class="tour-auth-field">
+                    <label class="tour-auth-label" for="tourAuthPassword">Password</label>
+                    <input type="password" id="tourAuthPassword" class="tour-auth-input" placeholder="${tourAuthMode === 'signup' ? 'At least 6 characters' : 'Enter password'}" autocomplete="current-password" required>
+                </div>
+                <div id="tourAuthFeedback" class="tour-auth-feedback hidden" role="alert"></div>
+                <button type="button" class="btn btn-primary tour-auth-btn" id="tourAuthSubmitBtn" onclick="handleTourAuthSubmit()">
+                    <span>${tourAuthMode === 'signup' ? 'Create Account & Sync ⚡' : 'Sign In & Sync ⚡'}</span>
+                </button>
+            </div>
+            <div class="tour-auth-footer-help">
+                <span id="tourAuthToggleNote">
+                    ${tourAuthMode === 'signup' ? 'Already have an account? <a href="#" onclick="setTourAuthMode(\'signin\'); return false;">Sign In</a>' : 'New here? <a href="#" onclick="setTourAuthMode(\'signup\'); return false;">Create an account</a>'}
+                </span>
+            </div>
+        </div>
+    `;
+
+    // Hook Enter key on inputs
+    const emailInput = document.getElementById('tourAuthEmail');
+    const pwInput = document.getElementById('tourAuthPassword');
+    if (emailInput && pwInput) {
+        emailInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') pwInput.focus();
+        });
+        pwInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleTourAuthSubmit();
+        });
+    }
+}
+
+function setTourAuthMode(mode) {
+    tourAuthMode = mode;
+    const currentUser = window.SupaSync?.getCurrentUser ? window.SupaSync.getCurrentUser() : null;
+    renderTourAuthStepContent(currentUser);
+}
+
+async function handleTourAuthSubmit() {
+    const emailEl = document.getElementById('tourAuthEmail');
+    const pwEl = document.getElementById('tourAuthPassword');
+    const feedback = document.getElementById('tourAuthFeedback');
+    const submitBtn = document.getElementById('tourAuthSubmitBtn');
+
+    const email = emailEl?.value?.trim();
+    const password = pwEl?.value;
+
+    function showError(msg) {
+        if (!feedback) return;
+        feedback.textContent = msg;
+        feedback.className = 'tour-auth-feedback error';
+        feedback.classList.remove('hidden');
+    }
+
+    function showSuccess(msg) {
+        if (!feedback) return;
+        feedback.textContent = msg;
+        feedback.className = 'tour-auth-feedback success';
+        feedback.classList.remove('hidden');
+    }
+
+    if (!email || !email.includes('@')) {
+        showError('Please enter a valid email address.');
+        emailEl?.focus();
+        return;
+    }
+
+    if (!password || password.length < 6) {
+        showError('Password must be at least 6 characters.');
+        pwEl?.focus();
+        return;
+    }
+
+    if (!window.SupaSync) {
+        showError('Cloud sync service is not ready. Please check connection.');
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Connecting to Cloud…';
+    }
+
+    try {
+        if (tourAuthMode === 'signup') {
+            const data = await window.SupaSync.signUpWithEmail(email, password);
+            if (!data.session && !data.user) {
+                showError('Account registration failed. Please try again.');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Account & Sync ⚡';
+                }
+                return;
+            }
+
+            if (!data.session && data.user) {
+                showSuccess('Account registered! Please check your email to confirm, then sign in.');
+                markTourActionCompleted('✓ Account created! Check your email to confirm.');
+                const nextBtn = document.getElementById('tourNextBtn');
+                if (nextBtn) {
+                    nextBtn.textContent = 'Finish Tour 🎉';
+                    nextBtn.classList.remove('tour-btn-locked');
+                    nextBtn.classList.add('tour-next-pulse');
+                }
+                return;
+            }
+
+            const user = data.user;
+            renderTourAuthStepContent(user);
+            markTourActionCompleted(`✓ Account created! Synced as ${user.email}`);
+            fireTourConfetti();
+        } else {
+            const user = await window.SupaSync.signInWithEmail(email, password);
+            renderTourAuthStepContent(user);
+            markTourActionCompleted(`✓ Signed in! Habits synced for ${user.email}`);
+            fireTourConfetti();
+        }
+
+        const nextBtn = document.getElementById('tourNextBtn');
+        if (nextBtn) {
+            nextBtn.textContent = 'Finish & Enter Workspace 🎉';
+            nextBtn.classList.remove('tour-btn-locked');
+            nextBtn.classList.add('tour-next-pulse');
+        }
+    } catch (err) {
+        console.error('[Tour Auth Error]', err);
+        const errMsg = err.message || 'Authentication failed. Please verify credentials.';
+        showError(errMsg);
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = (tourAuthMode === 'signup') ? 'Create Account & Sync ⚡' : 'Sign In & Sync ⚡';
+        }
+    }
 }
 
 function getStepTarget(step) {
@@ -2720,6 +3010,8 @@ window.exitInteractiveTour = exitInteractiveTour;
 window.nextTourStep = nextTourStep;
 window.prevTourStep = prevTourStep;
 window.onboardOpenAuth = onboardOpenAuth;
+window.setTourAuthMode = setTourAuthMode;
+window.handleTourAuthSubmit = handleTourAuthSubmit;
 window.openOnboardingModal = () => startInteractiveTour(0);
 window.closeOnboardingModal = exitInteractiveTour;
 window.skipOnboarding = exitInteractiveTour;

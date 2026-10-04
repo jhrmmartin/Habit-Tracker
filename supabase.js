@@ -479,6 +479,10 @@
 
         await _fullSyncFromCloud(year, month, true);
         _subscribeRealtime(user);
+
+        if (typeof window.onTourUserAuthenticated === 'function') {
+            try { window.onTourUserAuthenticated(user); } catch (_) {}
+        }
     }
 
     // ── Realtime Multi-Device Sync ───────────────────────────
@@ -708,6 +712,26 @@
         _setAuthBusy(false);
     }
 
+    async function signInWithEmail(email, password) {
+        const c = _getClient();
+        if (!c) throw new Error('Cloud sync is not configured.');
+        const { data, error } = await c.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        await _onSignIn(data.user);
+        return data.user;
+    }
+
+    async function signUpWithEmail(email, password) {
+        const c = _getClient();
+        if (!c) throw new Error('Cloud sync is not configured.');
+        const { data, error } = await c.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.user && data.session) {
+            await _onSignIn(data.user);
+        }
+        return data;
+    }
+
     // ── Expose public API to window ──────────────────────────
 
     window.SupaSync = {
@@ -719,6 +743,10 @@
         syncNow:             syncNow,
         pushUserPreferences: _pushUserPreferences,
         pullLatestFromCloud: _pullLatestFromCloud,
+        getUser:             _getUser,
+        getCurrentUser:      () => _user,
+        signInWithEmail:     signInWithEmail,
+        signUpWithEmail:     signUpWithEmail,
         signOutUser: async () => {
             const c = _getClient();
             if (_realtimeChannel && c) {
@@ -807,8 +835,12 @@
                     _realtimeChannel = null;
                 }
                 document.getElementById('syncStatusIndicator')?.classList.add('hidden');
-            } else if (event === 'TOKEN_REFRESHED' && session) {
+            } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
                 _user = session.user;
+                _updateUserBadge(_user);
+                if (typeof window.onTourUserAuthenticated === 'function') {
+                    try { window.onTourUserAuthenticated(_user); } catch (_) {}
+                }
             }
         });
     });
