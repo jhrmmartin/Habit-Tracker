@@ -252,6 +252,7 @@ window.onload = () => {
             closeCustomizeModal();
             closeHabitIconPicker();
             closeMoreOptionsMenu();
+            closePageIconPickerPopover();
         } else if (isTourActive) {
             if (e.key === 'ArrowRight') nextTourStep();
             if (e.key === 'ArrowLeft') prevTourStep();
@@ -262,6 +263,13 @@ window.onload = () => {
         const wrapper = document.getElementById('moreMenuWrapper');
         if (wrapper && !wrapper.contains(e.target)) {
             closeMoreOptionsMenu();
+        }
+        const popover = document.getElementById('pageIconPickerPopover');
+        const iconBtn = document.getElementById('notionPageIconBtn');
+        if (popover && !popover.classList.contains('hidden')) {
+            if (!popover.contains(e.target) && !iconBtn?.contains(e.target)) {
+                closePageIconPickerPopover();
+            }
         }
     });
 
@@ -1215,10 +1223,12 @@ function openReceiptModal() {
     }
 
     overlay.classList.add('active');
+    setTourCardModalOpen(true);
 }
 
 function closeReceiptModal() {
     document.getElementById('receiptModalOverlay')?.classList.remove('active');
+    setTourCardModalOpen(false);
 }
 
 function generateReceiptCanvas() {
@@ -1605,12 +1615,14 @@ function openRenameJournalModal() {
     const input = document.getElementById('customJournalTitleInput');
     if (input) input.value = journalTitle;
     if (overlay) overlay.classList.add('active');
+    setTourCardModalOpen(true);
     setTimeout(() => input?.focus(), 80);
 }
 
 function closeRenameJournalModal() {
     const overlay = document.getElementById('renameJournalModalOverlay');
     if (overlay) overlay.classList.remove('active');
+    setTourCardModalOpen(false);
 }
 
 function selectJournalPreset(presetName) {
@@ -1868,6 +1880,7 @@ function openDayNoteModal(day) {
     renderJournalPillsContainer('modalJournalPromptPills', 'dayNoteModalInput');
 
     overlay.classList.add('active');
+    setTourCardModalOpen(true);
     input.focus();
 }
 
@@ -1875,6 +1888,7 @@ function closeDayNoteModal() {
     const overlay = document.getElementById('dayNoteModalOverlay');
     if (overlay) overlay.classList.remove('active');
     modalActiveDay = null;
+    setTourCardModalOpen(false);
 }
 
 function saveDayNoteFromModal() {
@@ -2748,6 +2762,49 @@ function markTourActionCompleted(completedText) {
     if (nextBtn) nextBtn.classList.add('tour-next-pulse');
 }
 
+function setTourCardModalOpen(isOpen) {
+    const card = document.getElementById('tourCard');
+    if (!card) return;
+    if (isOpen) {
+        card.classList.add('tour-card-modal-open');
+    } else {
+        const anyModalActive = Boolean(document.querySelector('.modal-overlay.active'));
+        const popover = document.getElementById('pageIconPickerPopover');
+        const popoverOpen = popover && !popover.classList.contains('hidden');
+        if (!anyModalActive && !popoverOpen) {
+            card.classList.remove('tour-card-modal-open');
+        }
+    }
+}
+
+// Universal modal observer to guarantee onboarding tour card never overlaps any active modal
+if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+    const modalObserver = new MutationObserver(() => {
+        const hasActiveModal = Boolean(document.querySelector('.modal-overlay.active'));
+        const popover = document.getElementById('pageIconPickerPopover');
+        const popoverOpen = popover && !popover.classList.contains('hidden');
+        if (hasActiveModal || popoverOpen) {
+            setTourCardModalOpen(true);
+        } else {
+            setTourCardModalOpen(false);
+        }
+    });
+    const attachModalObservers = () => {
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+            modalObserver.observe(m, { attributes: true, attributeFilter: ['class'] });
+        });
+        const popover = document.getElementById('pageIconPickerPopover');
+        if (popover) {
+            modalObserver.observe(popover, { attributes: true, attributeFilter: ['class'] });
+        }
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachModalObservers);
+    } else {
+        attachModalObservers();
+    }
+}
+
 function positionTourSpotlight(targetEl) {
     const cutout = document.getElementById('tourMaskCutout');
     const outline = document.getElementById('tourTargetOutline');
@@ -3120,13 +3177,293 @@ const NOTION_PRESET_COVERS = [
     }
 ];
 
-const NOTION_PAGE_EMOJIS = ['⚡', '🌱', '🎯', '🚀', '🏔️', '☕', '🧘', '📚', '🏆', '🔥', '💡', '🛡️', '🌊', '🦉', '🪐', '🎨', '⚔️', '💎', '🧠', '☀️', '🌙', '⭐', '🌿', '🏹'];
-
-const NOTION_HABIT_ICONS = [
-    '💧', '🏋️', '🏃', '🚴', '🏊', '🧘', '🧗', '🥋', '🥗', '🥑', '🍎', '😴', '💊',
-    '📚', '✍️', '💻', '🧠', '💡', '🎯', '🎨', '🎸', '☕', '📖', '🧩', '⚡', '🔬',
-    '⏰', '🧹', '🧼', '💰', '📵', '🔋', '🛡️', '🌿', '☀️', '🌙', '🏆', '🔥', '✨', '✦'
+const NOTION_EMOJI_CATEGORIES = [
+    {
+        id: 'productivity',
+        name: 'Productivity',
+        emojis: [
+            '⚡', '🎯', '🚀', '🔥', '🏆', '💎', '💡', '🧠', '⭐', '✨', '✦', '⏱️', '⏰', '📅', '📌', '📍',
+            '📝', '📊', '📈', '📉', '💼', '📁', '📂', '📑', '🔬', '🔭', '🏹', '🛡️', '⚔️', '🪄', '🗝️', '🔑',
+            '🔋', '🔌', '💻', '🖥️', '⌨️', '📱', '🔔', '📣', '🏁', '🥇', '🥈', '🥉', '🎖️', '🏅', '👑', '💍'
+        ]
+    },
+    {
+        id: 'smileys',
+        name: 'Smileys',
+        emojis: [
+            '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰',
+            '😘', '😗', '😙', '😚', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨',
+            '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕',
+            '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁',
+            '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞'
+        ]
+    },
+    {
+        id: 'fitness',
+        name: 'Fitness',
+        emojis: [
+            '🏋️', '🏃', '🏃‍♀️', '🚴', '🚴‍♀️', '🏊', '🏊‍♀️', '🧘', '🧘‍♀️', '🧗', '🧗‍♀️', '🥋', '🥊', '⚽', '🏀', '🏈',
+            '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '⛳', '🏹', '🎣',
+            '🤿', '🎿', '🏂', '🛷', '🥌', '🛹', '🛼', '🩰', '🤸', '🏄', '🚣', '💧', '💊', '🩹', '🩺', '❤️'
+        ]
+    },
+    {
+        id: 'mind',
+        name: 'Mind & Study',
+        emojis: [
+            '📚', '📖', '📕', '📗', '📘', '📙', '📓', '📒', '📃', '📜', '📄', '📰', '🗞️', '✍️', '✏️', '✒️',
+            '🖋️', '🖊️', '🖌️', '🖍️', '🎨', '🧩', '♟️', '🎲', '🎯', '🎸', '🎹', '🎺', '🎻', '🥁', '🎷', '🎧',
+            '🎤', '🎬', '🎭', '🎪', '🎓', '🎒', '👓', '🕶️', '🔍', '🔎', '🕯️', '💡', '🧭', '🗺️', '🪐', '🌌'
+        ]
+    },
+    {
+        id: 'nature',
+        name: 'Nature & Sky',
+        emojis: [
+            '🌱', '🌿', '☘️', '🍀', '🎋', '🪴', '🍃', '🍂', '🍁', '🍄', '🌾', '💐', '🌷', '🌹', '🥀', '🌺',
+            '🌸', '🌼', '🌻', '🌞', '🌝', '🌛', '🌜', '🌙', '☀️', '⭐', '🌟', '✨', '⚡', '☄️', '💥', '🔥',
+            '🌪️', '🌈', '🌤️', '⛅', '🌥️', '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '🌨️', '❄️', '☃️', '⛄', '🌬️', '💨',
+            '💧', '💦', '🌊', '🏔️', '⛰️', '🌋', '🗻', '🏕️', '⛺', '🏖️', '🏜️', '🏝️', '🌲', '🌳', '🌴'
+        ]
+    },
+    {
+        id: 'food',
+        name: 'Food & Drink',
+        emojis: [
+            '☕', '🍵', '🧋', '🥤', '🧃', '🥛', '🍼', '🍶', '🍺', '🍻', '🥂', '🍷', '🥃', '🍸', '🍹', '🧉',
+            '🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥',
+            '🥝', '🍅', '🥑', '🥦', '🥬', '🥒', '🌽', '🥕', '🧄', '🧅', '🥔', '🍠', '🥐', '🥯', '🍞', '🥖',
+            '🥨', '🧀', '🥚', '🍳', '🥞', '🧇', '🥓', '🥩', '🍗', '🍖', '🌭', '🍔', '🍟', '🍕', '🥪', '🥙'
+        ]
+    },
+    {
+        id: 'symbols',
+        name: 'Symbols',
+        emojis: [
+            '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖',
+            '💘', '💝', '💟', '💯', '💢', '♨️', '🛑', '⛔', '📛', '🔰', '🔱', '⭕', '✅', '☑️', '✔️', '✖️',
+            '➕', '➖', '➗', '➰', '➿', '✳️', '✴️', '❇️', '©️', '®️', '™️', '🆙', '🆓', '🆕', '🆗', '🆘',
+            '🔒', '🔓', '🔏', '🔐', '🔔', '🔕', '🔖', '🔗', '🧿', '🪄', '🛡️', '⚔️', '🗝️', '🔑', '🏷️', '📦'
+        ]
+    }
 ];
+
+const NOTION_ALL_EMOJIS = (() => {
+    const list = [];
+    NOTION_EMOJI_CATEGORIES.forEach(cat => {
+        cat.emojis.forEach(em => {
+            if (!list.includes(em)) list.push(em);
+        });
+    });
+    return list;
+})();
+
+const NOTION_PAGE_EMOJIS = NOTION_ALL_EMOJIS;
+const NOTION_HABIT_ICONS = NOTION_ALL_EMOJIS;
+
+const EMOJI_KEYWORD_MAP = {
+    'run': ['🏃', '🏃‍♀️', '⚡', '👟', '🏁', '🥇'],
+    'running': ['🏃', '🏃‍♀️', '⚡', '👟', '🏁'],
+    'jog': ['🏃', '🏃‍♀️', '👟'],
+    'walk': ['🚶', '🏃', '👟'],
+    'workout': ['🏋️', '💪', '🥊', '🏃', '🧘', '🚴', '🏊'],
+    'gym': ['🏋️', '💪', '🥊', '🥗', '⚡', '🏆', '🥇'],
+    'exercise': ['🏋️', '🏃', '🚴', '🏊', '🧘', '🤸'],
+    'water': ['💧', '💦', '🌊', '🚰', '🧊'],
+    'drink': ['💧', '☕', '🍵', '🧃', '🥤', '🥛'],
+    'coffee': ['☕', '🍵', '🧋', '⚡', '🥐'],
+    'tea': ['🍵', '☕', '🧋', '🌿'],
+    'read': ['📚', '📖', '📕', '📗', '📘', '👓'],
+    'reading': ['📚', '📖', '📕', '📗', '📘'],
+    'book': ['📚', '📖', '📕', '📗', '📘', '📙'],
+    'study': ['📚', '📖', '🧠', '🎓', '✍️', '📝', '🔬'],
+    'learn': ['📚', '🧠', '💡', '🎓', '📝'],
+    'write': ['✍️', '📝', '✏️', '🖊️', '📄', '🖋️'],
+    'journal': ['📓', '✍️', '📝', '📖', '✨'],
+    'code': ['💻', '🖥️', '⌨️', '⚡', '🧠', '🚀'],
+    'coding': ['💻', '🖥️', '⌨️', '⚡', '🚀'],
+    'program': ['💻', '🖥️', '⌨️'],
+    'dev': ['💻', '🖥️', '🚀', '⚡'],
+    'sleep': ['😴', '🌙', '💤', '🛌', '🥱', '✨'],
+    'rest': ['😴', '🧘', '🌙', '🛋️'],
+    'meditate': ['🧘', '🧘‍♀️', '🕯️', '🌸', '🧠', '🕊️'],
+    'meditation': ['🧘', '🧘‍♀️', '🕯️', '🌸', '🧠', '🕊️'],
+    'mind': ['🧠', '💡', '🧘', '⚡', '🌌', '✨'],
+    'brain': ['🧠', '💡', '⚡', '🔬'],
+    'food': ['🥗', '🥑', '🍎', '🥪', '🍲', '🍜', '🥣', '🍳', '🥦'],
+    'eat': ['🥗', '🍎', '🥪', '🍜', '🍲', '🍕', '🍳'],
+    'diet': ['🥗', '🥑', '🍎', '🥦', '🥕', '💧', '🥒'],
+    'money': ['💰', '💵', '💳', '📈', '🪙', '💎'],
+    'save': ['💰', '💳', '🏦', '💎', '🪙'],
+    'budget': ['💰', '📊', '📈', '💳'],
+    'clean': ['🧹', '🧼', '✨', '🚿', '🧺'],
+    'health': ['❤️', '💊', '🩺', '🥗', '💧', '🏃', '🏋️'],
+    'medicine': ['💊', '🩺', '🩹', '💧'],
+    'heart': ['❤️', '💖', '💗', '💓', '❣️', '💕'],
+    'love': ['❤️', '💖', '🥰', '😍', '💕'],
+    'happy': ['😀', '😃', '😄', '😁', '😊', '🥳', '✨'],
+    'fire': ['🔥', '⚡', '🚀', '💥', '✨'],
+    'streak': ['🔥', '⚡', '🏆', '💎', '✨'],
+    'star': ['⭐', '🌟', '✨', '💫', '✦'],
+    'rocket': ['🚀', '⚡', '🔥', '🌌'],
+    'target': ['🎯', '🏹', '🏆', '📌'],
+    'goal': ['🎯', '🏆', '🥇', '🚀', '⚡'],
+    'focus': ['🎯', '🧠', '⚡', '🧘', '🏹'],
+    'trophy': ['🏆', '🥇', '🥈', '🥉', '🎖️', '👑'],
+    'win': ['🏆', '🥇', '👑', '🎉', '🥳'],
+    'winner': ['🏆', '🥇', '👑', '🎉'],
+    'music': ['🎸', '🎹', '🎧', '🎵', '🎶', '🎺', '🎷'],
+    'art': ['🎨', '🖌️', '🖍️', '✏️', '🎭'],
+    'draw': ['🎨', '✏️', '🖌️', '📝'],
+    'nature': ['🌱', '🌿', '🍀', '🌲', '🌳', '🌸', '🌻', '🍃'],
+    'sun': ['☀️', '🌞', '🌅', '🌤️'],
+    'moon': ['🌙', '🌚', '🌜', '🌌', '⭐'],
+    'space': ['🪐', '🚀', '🌌', '🌠', '⭐'],
+    'time': ['⏱️', '⏰', '⏳', '⌛', '📅'],
+    'clock': ['⏰', '⏱️', '⏳'],
+    'shield': ['🛡️', '⚔️', '🔒', '🗝️'],
+    'security': ['🛡️', '🔒', '🔐', '🔑'],
+    'lock': ['🔒', '🔓', '🔏', '🔐', '🗝️'],
+    'key': ['🔑', '🗝️', '💡', '🎯'],
+    'dog': ['🐶', '🐕', '🦮', '🐾'],
+    'cat': ['🐱', '🐈', '🐾'],
+    'bike': ['🚴', '🚴‍♀️', '🚲'],
+    'swim': ['🏊', '🏊‍♀️', '💧', '🌊'],
+    'yoga': ['🧘', '🧘‍♀️', '🕯️', '🌸']
+};
+
+function queryEmojiLibrary(query = '', categoryId = 'all') {
+    const q = (query || '').trim().toLowerCase();
+    let pool = [];
+
+    if (categoryId === 'all') {
+        pool = [...NOTION_ALL_EMOJIS];
+    } else {
+        const cat = NOTION_EMOJI_CATEGORIES.find(c => c.id === categoryId);
+        pool = cat ? [...cat.emojis] : [...NOTION_ALL_EMOJIS];
+    }
+
+    if (!q) return pool;
+
+    const directMatches = pool.filter(em => em.includes(q) || q.includes(em));
+
+    const keywordMatches = new Set();
+    Object.keys(EMOJI_KEYWORD_MAP).forEach(kw => {
+        if (kw.includes(q) || q.includes(kw)) {
+            EMOJI_KEYWORD_MAP[kw].forEach(em => {
+                if (categoryId === 'all' || pool.includes(em)) {
+                    keywordMatches.add(em);
+                }
+            });
+        }
+    });
+
+    NOTION_EMOJI_CATEGORIES.forEach(cat => {
+        if (cat.name.toLowerCase().includes(q)) {
+            cat.emojis.forEach(em => {
+                if (categoryId === 'all' || pool.includes(em)) {
+                    keywordMatches.add(em);
+                }
+            });
+        }
+    });
+
+    const result = new Set([...directMatches, ...keywordMatches]);
+    if (q.length <= 4 && !result.has(q) && /[\p{Emoji}\p{Symbol}]/u.test(q)) {
+        result.add(q);
+    }
+
+    const arr = Array.from(result);
+    return arr.length > 0 ? arr : pool;
+}
+
+function renderCategoryPills(containerId, activeCatId, onSelectFnName) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const cats = [{ id: 'all', name: 'All' }, ...NOTION_EMOJI_CATEGORIES];
+    el.innerHTML = cats.map(c => `
+        <button type="button" class="popover-cat-pill ${c.id === activeCatId ? 'active' : ''}" onclick="${onSelectFnName}('${c.id}')">
+            ${c.name}
+        </button>
+    `).join('');
+}
+
+// Notion Page Icon Popover Logic
+let popoverActiveCat = 'all';
+
+function renderPageIconPopover(catId = popoverActiveCat, query = '') {
+    renderCategoryPills('popoverEmojiCatPills', catId, 'setPopoverCategory');
+    const grid = document.getElementById('popoverEmojiGrid');
+    if (!grid) return;
+    const emojis = queryEmojiLibrary(query, catId);
+    if (emojis.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.75rem; padding: 16px 0;">No matching emojis found</div>';
+        return;
+    }
+    grid.innerHTML = emojis.map(em => `
+        <button type="button" class="popover-emoji-btn ${em === notionWorkspace.pageIcon ? 'active' : ''}" onclick="selectPageEmojiFromPopover('${em}')" title="${em}">
+            ${em}
+        </button>
+    `).join('');
+}
+
+function filterPageIconPopover() {
+    const input = document.getElementById('popoverEmojiSearchInput');
+    const q = input ? input.value : '';
+    renderPageIconPopover(popoverActiveCat, q);
+}
+
+function setPopoverCategory(catId) {
+    popoverActiveCat = catId;
+    const input = document.getElementById('popoverEmojiSearchInput');
+    const q = input ? input.value : '';
+    renderPageIconPopover(catId, q);
+}
+
+function selectPageEmojiFromPopover(em) {
+    setNotionPageIcon(em);
+    closePageIconPickerPopover();
+}
+
+function applyCustomPopoverEmoji() {
+    const input = document.getElementById('popoverCustomEmojiInput');
+    const val = input ? input.value.trim() : '';
+    if (!val) return;
+    setNotionPageIcon(val);
+    input.value = '';
+    closePageIconPickerPopover();
+}
+
+function randomizePageEmoji() {
+    const randomEmoji = NOTION_ALL_EMOJIS[Math.floor(Math.random() * NOTION_ALL_EMOJIS.length)];
+    setNotionPageIcon(randomEmoji);
+    closePageIconPickerPopover();
+}
+
+function togglePageIconPickerPopover(event) {
+    if (event) event.stopPropagation();
+    const popover = document.getElementById('pageIconPickerPopover');
+    if (!popover) return;
+    const isHidden = popover.classList.contains('hidden');
+    if (isHidden) {
+        popover.classList.remove('hidden');
+        setTourCardModalOpen(true);
+        const searchInput = document.getElementById('popoverEmojiSearchInput');
+        if (searchInput) searchInput.value = '';
+        popoverActiveCat = 'all';
+        renderPageIconPopover('all', '');
+        setTimeout(() => searchInput?.focus(), 50);
+    } else {
+        closePageIconPickerPopover();
+    }
+}
+
+function closePageIconPickerPopover() {
+    const popover = document.getElementById('pageIconPickerPopover');
+    if (!popover || popover.classList.contains('hidden')) return;
+    popover.classList.add('hidden');
+    setTourCardModalOpen(false);
+}
 
 const NOTION_WALLPAPERS = [
     { id: 'none', title: 'Default Theme Canvas', desc: 'Clean background matching selected theme' },
@@ -3282,12 +3619,14 @@ function openCustomizeModal(tab = 'cover') {
     const overlay = document.getElementById('customizeLayoutModalOverlay');
     if (!overlay) return;
     overlay.classList.add('active');
+    setTourCardModalOpen(true);
     if (tab === 'general') tab = 'cover';
     switchCustomTab(tab);
 }
 
 function closeCustomizeModal() {
     document.getElementById('customizeLayoutModalOverlay')?.classList.remove('active');
+    setTourCardModalOpen(false);
 }
 
 function switchCustomTab(tab) {
@@ -3299,6 +3638,13 @@ function switchCustomTab(tab) {
         btn?.classList.toggle('active', isActive);
         panel?.classList.toggle('hidden', !isActive);
     });
+    if (tab === 'identity') {
+        const titleInput = document.getElementById('customWorkspaceTitleInput');
+        const quoteInput = document.getElementById('customWorkspaceQuoteInput');
+        if (titleInput) titleInput.value = notionWorkspace.pageTitle || 'Habit OS';
+        if (quoteInput) quoteInput.value = notionWorkspace.pageQuote || '';
+        renderCustomizerPageEmojis();
+    }
 }
 
 function renderCustomizerPresetCovers() {
@@ -3369,14 +3715,35 @@ function setNotionCoverPosition(pos) {
     saveNotionWorkspace();
 }
 
-function renderCustomizerPageEmojis() {
+let customizerEmojiActiveCat = 'all';
+
+function renderCustomizerPageEmojis(catId = customizerEmojiActiveCat, query = '') {
+    renderCategoryPills('customizerEmojiCatPills', catId, 'setCustomizerEmojiCategory');
     const grid = document.getElementById('pageEmojiQuickGrid');
     if (!grid) return;
-    grid.innerHTML = NOTION_PAGE_EMOJIS.map(em => `
-        <button type="button" class="emoji-btn ${em === notionWorkspace.pageIcon ? 'active' : ''}" onclick="setNotionPageIcon('${em}')">
+    const emojis = queryEmojiLibrary(query, catId);
+    if (emojis.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.75rem; padding: 14px 0;">No matching emojis</div>';
+        return;
+    }
+    grid.innerHTML = emojis.map(em => `
+        <button type="button" class="emoji-btn ${em === notionWorkspace.pageIcon ? 'active' : ''}" onclick="setNotionPageIcon('${em}')" title="${em}">
             ${em}
         </button>
     `).join('');
+}
+
+function filterCustomizerEmojis() {
+    const input = document.getElementById('customizerEmojiSearchInput');
+    const q = input ? input.value : '';
+    renderCustomizerPageEmojis(customizerEmojiActiveCat, q);
+}
+
+function setCustomizerEmojiCategory(catId) {
+    customizerEmojiActiveCat = catId;
+    const input = document.getElementById('customizerEmojiSearchInput');
+    const q = input ? input.value : '';
+    renderCustomizerPageEmojis(catId, q);
 }
 
 function setNotionPageIcon(emoji) {
@@ -3461,14 +3828,35 @@ function applyWorkspaceFont(fontType) {
 let activeIconPickerHabitId = null;
 let pendingHabitIcon = null;
 
-function renderHabitIconPickerGrid() {
+let habitIconActiveCat = 'all';
+
+function renderHabitIconPickerGrid(catId = habitIconActiveCat, query = '') {
+    renderCategoryPills('habitIconCatPills', catId, 'setHabitIconCategory');
     const grid = document.getElementById('habitIconGrid');
     if (!grid) return;
-    grid.innerHTML = NOTION_HABIT_ICONS.map(ic => `
-        <button type="button" class="habit-icon-cell ${ic === pendingHabitIcon ? 'active' : ''}" onclick="selectHabitIcon('${ic}')">
+    const emojis = queryEmojiLibrary(query, catId);
+    if (emojis.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); font-size: 0.75rem; padding: 14px 0;">No matching icons</div>';
+        return;
+    }
+    grid.innerHTML = emojis.map(ic => `
+        <button type="button" class="habit-icon-cell ${ic === pendingHabitIcon ? 'active' : ''}" onclick="selectHabitIcon('${ic}')" title="${ic}">
             ${ic}
         </button>
     `).join('');
+}
+
+function filterHabitIcons() {
+    const input = document.getElementById('habitIconSearchInput');
+    const q = input ? input.value : '';
+    renderHabitIconPickerGrid(habitIconActiveCat, q);
+}
+
+function setHabitIconCategory(catId) {
+    habitIconActiveCat = catId;
+    const input = document.getElementById('habitIconSearchInput');
+    const q = input ? input.value : '';
+    renderHabitIconPickerGrid(catId, q);
 }
 
 function openHabitIconPicker(habitId) {
@@ -3482,14 +3870,20 @@ function openHabitIconPicker(habitId) {
     if (titleEl) titleEl.textContent = `Icon for "${habit.name}"`;
     if (subEl) subEl.textContent = `Current icon: ${pendingHabitIcon}`;
 
+    habitIconActiveCat = 'all';
+    const searchInput = document.getElementById('habitIconSearchInput');
+    if (searchInput) searchInput.value = '';
+
     renderHabitIconPickerGrid();
     document.getElementById('habitIconPickerModalOverlay')?.classList.add('active');
+    setTourCardModalOpen(true);
 }
 
 function closeHabitIconPicker() {
     document.getElementById('habitIconPickerModalOverlay')?.classList.remove('active');
     activeIconPickerHabitId = null;
     pendingHabitIcon = null;
+    setTourCardModalOpen(false);
 }
 
 function selectHabitIcon(emoji) {
@@ -3597,4 +3991,16 @@ window.autoSuggestHabitIcon = autoSuggestHabitIcon;
 window.removeHabitIcon = removeHabitIcon;
 window.saveSelectedHabitIcon = saveSelectedHabitIcon;
 window.getHabitIcon = getHabitIcon;
-
+window.togglePageIconPickerPopover = togglePageIconPickerPopover;
+window.closePageIconPickerPopover = closePageIconPickerPopover;
+window.renderPageIconPopover = renderPageIconPopover;
+window.filterPageIconPopover = filterPageIconPopover;
+window.setPopoverCategory = setPopoverCategory;
+window.selectPageEmojiFromPopover = selectPageEmojiFromPopover;
+window.applyCustomPopoverEmoji = applyCustomPopoverEmoji;
+window.randomizePageEmoji = randomizePageEmoji;
+window.filterCustomizerEmojis = filterCustomizerEmojis;
+window.setCustomizerEmojiCategory = setCustomizerEmojiCategory;
+window.filterHabitIcons = filterHabitIcons;
+window.setHabitIconCategory = setHabitIconCategory;
+window.setTourCardModalOpen = setTourCardModalOpen;

@@ -310,11 +310,17 @@
 
                 <div class="emoji-picker-container">
                     <label class="form-label">Pick Page Emoji / Icon</label>
-                    <div class="emoji-quick-grid" id="pageEmojiQuickGrid">
+                    <div style="margin-bottom: 8px;">
+                        <input type="text" class="popover-search-input" id="customizerEmojiSearchInput" placeholder="🔍 Search 350+ emojis (fire, book, run, star)..." oninput="filterCustomizerEmojis()" autocomplete="off">
+                    </div>
+                    <div class="popover-cat-pills" id="customizerEmojiCatPills" style="margin-bottom: 8px;">
+                        <!-- Category pills populated by JS -->
+                    </div>
+                    <div class="emoji-quick-grid" id="pageEmojiQuickGrid" style="max-height: 180px; overflow-y: auto;">
                         <!-- Populated by JS -->
                     </div>
                     <div style="display:flex; gap:8px; margin-top:10px;">
-                        <input type="text" id="customPageIconInput" class="form-input" placeholder="Or type any emoji / symbol…" maxlength="4" style="max-width:180px; text-align:center; font-size:1.125rem;">
+                        <input type="text" id="customPageIconInput" class="form-input" placeholder="Or type/paste any emoji / symbol…" maxlength="4" style="max-width:180px; text-align:center; font-size:1.125rem;">
                         <button class="btn" onclick="applyCustomPageIcon()">Set Custom Icon</button>
                     </div>
                 </div>
@@ -416,9 +422,14 @@
             <h3 class="modal-title" id="habitIconModalTitle">Choose Habit Icon</h3>
             <p class="modal-subtitle" id="habitIconModalSubtitle">Personalize this habit with a Notion-style emoji or symbol.</p>
 
+            <div style="margin-bottom: 8px;">
+                <input type="text" class="popover-search-input" id="habitIconSearchInput" placeholder="🔍 Search 350+ emojis (e.g. water, workout, code, sleep)..." oninput="filterHabitIcons()" autocomplete="off">
+            </div>
+            <div class="popover-cat-pills" id="habitIconCatPills" style="margin-bottom: 8px;">
+                <!-- Category pills populated by JS -->
+            </div>
             <div class="habit-icon-quick-category">
-                <span class="habit-icon-cat-label">POPULAR HABIT ICONS</span>
-                <div class="habit-icon-grid" id="habitIconGrid">
+                <div class="habit-icon-grid" id="habitIconGrid" style="max-height: 180px; overflow-y: auto;">
                     <!-- Populated by JS -->
                 </div>
             </div>
@@ -456,9 +467,32 @@
             <!-- Notion Floating Page Identity Header -->
             <div class="notion-identity-bar" id="notionIdentityBar">
                 <div class="notion-page-icon-wrapper">
-                    <button class="notion-page-icon-btn" id="notionPageIconBtn" onclick="openCustomizeModal('identity')" title="Click to change page icon" aria-label="Page icon">
+                    <button class="notion-page-icon-btn" id="notionPageIconBtn" onclick="togglePageIconPickerPopover(event)" title="Click to change page icon" aria-label="Page icon">
                         <span id="notionPageIconDisplay">⚡</span>
                     </button>
+                    <!-- Notion-style floating emoji picker popover -->
+                    <div class="page-icon-popover hidden" id="pageIconPickerPopover" onclick="event.stopPropagation()">
+                        <div class="popover-header">
+                            <input type="text" class="popover-search-input" id="popoverEmojiSearchInput" placeholder="🔍 Search 350+ emojis (fire, book, run, star)..." oninput="filterPageIconPopover()" autocomplete="off">
+                        </div>
+                        <div class="popover-cat-pills" id="popoverEmojiCatPills">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                        <div class="popover-emoji-grid" id="popoverEmojiGrid">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                        <div class="popover-footer">
+                            <div class="popover-custom-row">
+                                <input type="text" class="popover-custom-input" id="popoverCustomEmojiInput" placeholder="Paste / type any emoji (e.g. 🏆, 🚀, 🥋)" maxlength="4">
+                                <button class="btn btn-primary btn-sm" onclick="applyCustomPopoverEmoji()">Apply</button>
+                            </div>
+                            <div class="popover-actions-row">
+                                <button class="popover-btn-ghost" onclick="randomizePageEmoji()">🎲 Random</button>
+                                <button class="popover-btn-ghost" onclick="openCustomizeModal('identity'); closePageIconPickerPopover();">⚙ Full Customizer</button>
+                                <button class="popover-btn-ghost" onclick="closePageIconPickerPopover()">Done</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="notion-title-block">
                     <div class="notion-title-row">

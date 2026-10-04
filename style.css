@@ -939,7 +939,7 @@ select.mood-sleep-select option {
     inset: 0;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(4px);
-    z-index: 10000;
+    z-index: 10020;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -951,6 +951,7 @@ select.mood-sleep-select option {
 .modal-overlay.active {
     opacity: 1;
     pointer-events: all;
+    z-index: 10020 !important;
 }
 
 .modal-box {
@@ -2683,6 +2684,199 @@ select.mood-sleep-select option {
 
 .tour-field-shake {
     animation: tourFieldShake 0.4s ease;
+}
+
+/* When a modal or popover opens during tour, smoothly tuck away tour card */
+.tour-card.tour-card-modal-open {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(12px) scale(0.96) !important;
+}
+
+/* ── Notion-Style Floating Page Icon Popover ── */
+.notion-page-icon-wrapper {
+    position: relative;
+}
+
+.page-icon-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    background: var(--bg-surface-elevated, #161b22);
+    border: 1px solid var(--border-strong, #30363d);
+    border-radius: var(--radius-md, 12px);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10025 !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    animation: popoverFadeIn 0.18s ease;
+}
+
+.page-icon-popover.hidden {
+    display: none !important;
+}
+
+@keyframes popoverFadeIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.popover-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.popover-search-input {
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 0.8125rem;
+    background: var(--bg-surface, #0d1117);
+    border: 1px solid var(--border-subtle, #30363d);
+    border-radius: 6px;
+    color: var(--text-primary);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+}
+
+.popover-search-input:focus {
+    border-color: var(--accent, #2383e2);
+    box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.2);
+}
+
+.popover-cat-pills {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+}
+
+.popover-cat-pills::-webkit-scrollbar {
+    display: none;
+}
+
+.popover-cat-pill {
+    padding: 3px 9px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-surface, #0d1117);
+    border: 1px solid var(--border-subtle, #30363d);
+    border-radius: var(--radius-pill, 9999px);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s ease;
+}
+
+.popover-cat-pill:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+}
+
+.popover-cat-pill.active {
+    background: var(--accent, #2383e2);
+    color: #ffffff;
+    border-color: var(--accent);
+}
+
+.popover-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.popover-emoji-grid::-webkit-scrollbar,
+.emoji-quick-grid::-webkit-scrollbar,
+.habit-icon-grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.popover-emoji-grid::-webkit-scrollbar-thumb,
+.emoji-quick-grid::-webkit-scrollbar-thumb,
+.habit-icon-grid::-webkit-scrollbar-thumb {
+    background: var(--border-strong, #30363d);
+    border-radius: 4px;
+}
+
+.popover-emoji-btn {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1875rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.popover-emoji-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--border-subtle);
+    transform: scale(1.18);
+}
+
+.popover-emoji-btn.active {
+    background: rgba(35, 131, 226, 0.2);
+    border-color: var(--accent, #2383e2);
+}
+
+.popover-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle, #30363d);
+}
+
+.popover-custom-row {
+    display: flex;
+    gap: 6px;
+}
+
+.popover-custom-input {
+    flex: 1;
+    padding: 5px 8px;
+    font-size: 0.75rem;
+    background: var(--bg-surface, #0d1117);
+    border: 1px solid var(--border-subtle, #30363d);
+    border-radius: 6px;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.popover-actions-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.popover-btn-ghost {
+    background: transparent;
+    border: none;
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.12s ease;
+}
+
+.popover-btn-ghost:hover {
+    color: var(--text-primary);
 }
 
 .tour-confetti-canvas {
