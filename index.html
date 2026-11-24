@@ -671,9 +671,9 @@
         <p id="authDialogSubtitle" class="dialog-subtitle">Access your Daymark rhythm from any device.</p>
       </div>
     </div>
-    <form id="authForm">
+    <form id="authForm" novalidate>
       <div class="dialog-body">
-        <div class="form-group">
+        <div id="authEmailGroup" class="form-group">
           <label for="authEmailField" class="form-label">Email address</label>
           <input type="email" id="authEmailField" class="form-input" autocomplete="email" required placeholder="you@example.com">
         </div>
@@ -691,7 +691,8 @@
           </div>
         </div>
 
-        <div id="authFormError" class="form-error" role="alert"></div>
+        <div id="authFormNotice" class="form-notice" role="status" aria-live="polite"></div>
+        <div id="authFormError" class="form-error auth-feedback" role="alert"></div>
 
         <button type="button" id="authSwitchModeBtn" class="btn btn-ghost" style="align-self:center; font-size:0.8rem;">
           Don't have an account? Create one

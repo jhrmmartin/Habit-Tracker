@@ -18,15 +18,29 @@ let prefTimer = null;
 let isPulling = false;
 let retryCount = 0;
 
-function getClient() {
-  if (client) return client;
+function getClientStatus() {
   const cfg = window.SUPABASE_CONFIG;
   if (!cfg?.url || !cfg?.anonKey || cfg.url.includes('YOUR_PROJECT') || cfg.anonKey.includes('YOUR_ANON')) {
-    return null;
+    return 'not_configured';
   }
   if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-    return null;
+    return 'sdk_missing';
   }
+  return 'ready';
+}
+
+function getConfiguredHost() {
+  try {
+    return new URL(window.SUPABASE_CONFIG?.url || '').hostname;
+  } catch {
+    return '';
+  }
+}
+
+function getClient() {
+  if (client) return client;
+  if (getClientStatus() !== 'ready') return null;
+  const cfg = window.SUPABASE_CONFIG;
   try {
     client = window.supabase.createClient(cfg.url, cfg.anonKey, {
       auth: { persistSession: true, autoRefreshToken: true }
@@ -39,8 +53,45 @@ function getClient() {
 }
 
 function isNetworkError(err) {
-  const msg = String(err?.message || err || '').toLowerCase();
-  return msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed') || msg.includes('net::err');
+  if (!err) return false;
+  const name = String(err.name || '');
+  const msg = String(err.message || err || '').toLowerCase();
+  return name === 'AuthRetryableFetchError'
+    || err.status === 0
+    || msg.includes('failed to fetch')
+    || msg.includes('networkerror')
+    || msg.includes('load failed')
+    || msg.includes('net::err')
+    || msg.includes('name_not_resolved')
+    || msg === '{}'
+    || msg === '';
+}
+
+function formatAuthError(err) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return 'You appear to be offline. Reconnect to sign in, or continue using Daymark locally.';
+  }
+  const raw = String(err?.message || '').trim();
+  const lower = raw.toLowerCase();
+
+  if (isNetworkError(err)) {
+    const host = getConfiguredHost();
+    const hostNote = host ? ` (${host})` : '';
+    return `Could not reach the Supabase cloud server${hostNote}. Free-tier Supabase projects pause after 7 days of inactivity — restore your project at supabase.com/dashboard or update supabase-config.js.`;
+  }
+  if (lower.includes('invalid login credentials')) {
+    return "Incorrect email or password. If you haven't created an account yet, click \"Don't have an account? Create one\" below.";
+  }
+  if (lower.includes('email not confirmed')) {
+    return 'Please confirm your email address first — check your inbox (and spam folder) for the verification link.';
+  }
+  if (lower.includes('user already registered')) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+  if (lower.includes('rate limit') || lower.includes('too many requests') || err?.status === 429) {
+    return 'Too many attempts in a short time. Please wait a minute and try again.';
+  }
+  return raw || 'Authentication failed. Please check your email and password and try again.';
 }
 
 async function resolveUser(forceFresh = false) {
@@ -514,66 +565,118 @@ export async function manualSyncNow() {
   toast.success('Synced across devices');
 }
 
-// ── Auth Dialog (Sign In / Sign Up / Forgot Password) ────────
-let authMode = 'signin'; // 'signin' | 'signup' | 'reset'
+// ── Auth Dialog (Sign In / Sign Up / Forgot Password / Recovery) ──
+let authMode = 'signin'; // 'signin' | 'signup' | 'reset' | 'update-password'
+
+function getSubmitLabel(mode) {
+  if (mode === 'signup') return 'Create Account';
+  if (mode === 'reset') return 'Send Reset Link';
+  if (mode === 'update-password') return 'Update Password';
+  return 'Sign In';
+}
 
 export function openAuthDialog(mode = 'signin') {
   const dialog = document.getElementById('authDialog');
   if (!dialog) return;
 
-  if (!getClient()) {
-    toast.error('Cloud sync is not configured yet. Add your Supabase keys in supabase-config.js.');
+  const status = getClientStatus();
+  if (status === 'not_configured') {
+    toast.error('Cloud sync is not configured yet. Add your Supabase URL and anon key in supabase-config.js.');
+    return;
+  }
+  if (status === 'sdk_missing' || !getClient()) {
+    toast.error('Could not load the cloud sync library. Check your internet connection or ad blocker and reload.');
     return;
   }
 
   setAuthMode(mode);
   dialog.returnValue = '';
-  dialog.showModal();
-  document.getElementById('authEmailField')?.focus();
+  if (!dialog.open) dialog.showModal();
+  if (mode === 'update-password') {
+    document.getElementById('authPasswordField')?.focus();
+  } else {
+    document.getElementById('authEmailField')?.focus();
+  }
 }
 
 function setAuthMode(mode) {
   authMode = mode;
   const title = document.getElementById('authDialogTitle');
   const subtitle = document.getElementById('authDialogSubtitle');
+  const emailGroup = document.getElementById('authEmailGroup');
+  const emailInput = document.getElementById('authEmailField');
   const pwGroup = document.getElementById('authPasswordGroup');
   const pwInput = document.getElementById('authPasswordField');
   const submitBtn = document.getElementById('authSubmitBtn');
   const switchBtn = document.getElementById('authSwitchModeBtn');
   const forgotBtn = document.getElementById('authForgotBtn');
   const errEl = document.getElementById('authFormError');
+  const noticeEl = document.getElementById('authFormNotice');
 
   if (errEl) errEl.textContent = '';
+  if (noticeEl) noticeEl.textContent = '';
 
   if (mode === 'signup') {
     if (title) title.textContent = 'Create a Daymark account';
     if (subtitle) subtitle.textContent = 'Back up your habits and sync across phone and computer.';
+    emailGroup?.classList.remove('hidden');
+    if (emailInput) { emailInput.disabled = false; emailInput.required = true; }
     pwGroup?.classList.remove('hidden');
     if (pwInput) {
+      pwInput.disabled = false;
       pwInput.required = true;
       pwInput.setAttribute('autocomplete', 'new-password');
     }
-    if (submitBtn) submitBtn.textContent = 'Create Account';
-    if (switchBtn) switchBtn.textContent = 'Already have an account? Sign in';
+    if (submitBtn) submitBtn.textContent = getSubmitLabel('signup');
+    if (switchBtn) {
+      switchBtn.classList.remove('hidden');
+      switchBtn.textContent = 'Already have an account? Sign in';
+    }
     forgotBtn?.classList.add('hidden');
   } else if (mode === 'reset') {
     if (title) title.textContent = 'Reset your password';
     if (subtitle) subtitle.textContent = 'Enter your email and we will send a password reset link.';
+    emailGroup?.classList.remove('hidden');
+    if (emailInput) { emailInput.disabled = false; emailInput.required = true; }
     pwGroup?.classList.add('hidden');
-    if (pwInput) pwInput.required = false;
-    if (submitBtn) submitBtn.textContent = 'Send Reset Link';
-    if (switchBtn) switchBtn.textContent = 'Back to sign in';
+    if (pwInput) { pwInput.disabled = true; pwInput.required = false; }
+    if (submitBtn) submitBtn.textContent = getSubmitLabel('reset');
+    if (switchBtn) {
+      switchBtn.classList.remove('hidden');
+      switchBtn.textContent = 'Back to sign in';
+    }
+    forgotBtn?.classList.add('hidden');
+  } else if (mode === 'update-password') {
+    if (title) title.textContent = 'Choose a new password';
+    if (subtitle) subtitle.textContent = 'Enter a new password (at least 6 characters) for your Daymark account.';
+    emailGroup?.classList.add('hidden');
+    if (emailInput) { emailInput.disabled = true; emailInput.required = false; }
+    pwGroup?.classList.remove('hidden');
+    if (pwInput) {
+      pwInput.disabled = false;
+      pwInput.required = true;
+      pwInput.value = '';
+      pwInput.setAttribute('autocomplete', 'new-password');
+    }
+    if (submitBtn) submitBtn.textContent = getSubmitLabel('update-password');
+    switchBtn?.classList.add('hidden');
     forgotBtn?.classList.add('hidden');
   } else {
     if (title) title.textContent = 'Sign in to sync';
     if (subtitle) subtitle.textContent = 'Access your Daymark rhythm from any device.';
+    emailGroup?.classList.remove('hidden');
+    if (emailInput) { emailInput.disabled = false; emailInput.required = true; }
     pwGroup?.classList.remove('hidden');
     if (pwInput) {
+      pwInput.disabled = false;
       pwInput.required = true;
       pwInput.setAttribute('autocomplete', 'current-password');
     }
-    if (submitBtn) submitBtn.textContent = 'Sign In';
-    if (switchBtn) switchBtn.textContent = "Don't have an account? Create one";
+    if (submitBtn) submitBtn.textContent = getSubmitLabel('signin');
+    if (switchBtn) {
+      switchBtn.classList.remove('hidden');
+      switchBtn.textContent = "Don't have an account? Create one";
+    }
     forgotBtn?.classList.remove('hidden');
   }
 }
@@ -582,42 +685,66 @@ async function handleAuthSubmit(e) {
   e.preventDefault();
   const c = getClient();
   const errEl = document.getElementById('authFormError');
+  const noticeEl = document.getElementById('authFormNotice');
   const submitBtn = document.getElementById('authSubmitBtn');
   const email = document.getElementById('authEmailField')?.value?.trim() || '';
   const password = document.getElementById('authPasswordField')?.value || '';
+
+  if (errEl) errEl.textContent = '';
+  if (noticeEl) noticeEl.textContent = '';
 
   if (!c) {
     if (errEl) errEl.textContent = 'Cloud sync is unavailable right now.';
     return;
   }
-  if (!email) {
-    if (errEl) errEl.textContent = 'Please enter your email address.';
-    return;
+  if (authMode !== 'update-password') {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (errEl) errEl.textContent = 'Please enter a valid email address.';
+      document.getElementById('authEmailField')?.focus();
+      return;
+    }
   }
   if (authMode !== 'reset' && password.length < 6) {
     if (errEl) errEl.textContent = 'Password must be at least 6 characters.';
+    document.getElementById('authPasswordField')?.focus();
     return;
   }
 
-  if (errEl) errEl.textContent = '';
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Please wait…';
   }
 
+  const redirectUrl = window.location.origin + window.location.pathname;
+
   try {
     if (authMode === 'reset') {
-      const { error } = await c.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname
+      const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
+      if (error) throw error;
+      if (noticeEl) noticeEl.textContent = 'Password reset link sent — check your inbox (and spam folder).';
+      toast.success('Password reset link sent — check your inbox.');
+    } else if (authMode === 'update-password') {
+      const { data, error } = await c.auth.updateUser({ password });
+      if (error) throw error;
+      if (data?.user) {
+        currentUser = data.user;
+        updateAccountUI(currentUser);
+      }
+      document.getElementById('authDialog')?.close('password-updated');
+      toast.success('Password updated! You are signed in.');
+    } else if (authMode === 'signup') {
+      const { data, error } = await c.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: redirectUrl }
       });
       if (error) throw error;
-      document.getElementById('authDialog')?.close('reset-sent');
-      toast.success('Password reset link sent — check your inbox.');
-    } else if (authMode === 'signup') {
-      const { data, error } = await c.auth.signUp({ email, password });
-      if (error) throw error;
-      if (!data.session) {
-        if (errEl) errEl.textContent = 'Account created! Check your email to confirm, then sign in.';
+      // Supabase returns empty identities when an account already exists and email confirmation is enabled
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        if (errEl) errEl.textContent = 'An account with this email already exists. Try signing in or using "Forgot password?".';
+      } else if (!data?.session) {
+        if (noticeEl) noticeEl.textContent = 'Account created! Check your email inbox (and spam folder) for a confirmation link, then sign in.';
+        toast.success('Account created! Check your email to confirm.');
       } else {
         currentUser = data.user;
         updateAccountUI(currentUser);
@@ -638,11 +765,11 @@ async function handleAuthSubmit(e) {
       toast.success(`Signed in as ${currentUser.email}`);
     }
   } catch (err) {
-    if (errEl) errEl.textContent = err?.message || 'Authentication failed. Please check your credentials.';
+    if (errEl) errEl.textContent = formatAuthError(err);
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      setAuthMode(authMode);
+      submitBtn.textContent = getSubmitLabel(authMode);
     }
     const pwField = document.getElementById('authPasswordField');
     if (pwField && document.getElementById('authDialog')?.open === false) {
@@ -758,9 +885,18 @@ export async function initSync() {
       currentUser = null;
       unsubscribeRealtime();
       updateAccountUI(null);
-    } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+    } else if (event === 'PASSWORD_RECOVERY' && session?.user) {
       currentUser = session.user;
       updateAccountUI(currentUser);
+      openAuthDialog('update-password');
+    } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+      const wasSignedOut = !currentUser;
+      currentUser = session.user;
+      updateAccountUI(currentUser);
+      if (wasSignedOut && event === 'SIGNED_IN') {
+        fullSync({ preferCloud: false });
+        subscribeRealtime(currentUser);
+      }
     }
   });
 }
