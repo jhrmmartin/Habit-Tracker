@@ -1,930 +1,871 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Habit Tracker — Daily Discipline</title>
-    <!-- Favicon & Touch Icons -->
-    <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Supabase client (UMD build — exposes window.supabase) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#F6F2EA">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="description" content="Daymark — Small marks, lasting rhythm. A calm, tactile, local-first daily habit tracker, wellness check-in, and micro-journal.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+
+  <title>Today | Daymark — Small marks, lasting rhythm</title>
+
+  <!-- Brand Icons & PWA Manifest -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon.png">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Editorial & UI Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Layered Modular Stylesheets -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+
+  <!-- Pinned & SRI-Verified Third-Party Dependencies (Non-Blocking Deferred) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"
+          integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT"
+          crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"
+          integrity="sha384-T/4KgSWuZEPozpPz7rnnp/5lDSnpY1VPJCojf1S81uTHS1E38qgLfMgVsAeRCWc4"
+          crossorigin="anonymous"></script>
+  <script defer src="supabase-config.js"></script>
+  <script type="module" src="js/main.js"></script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link visually-hidden">Skip to habits</a>
 
-    <!-- ══ Confirmation Modal (delete / clear) ══════════════ -->
-    <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalMessage">
-        <div class="modal-box">
-            <h3 class="modal-title">Confirm Action</h3>
-            <p class="modal-message" id="modalMessage"></p>
-            <div class="modal-actions">
-                <button class="btn" id="modalCancel">Cancel</button>
-                <button class="btn btn-danger" id="modalConfirm">Confirm</button>
-            </div>
+  <!-- Centralized Screen-Reader Live Announcers (ariaNotify fallback) -->
+  <p class="visually-hidden">Status announcements</p>
+  <div id="livePolite" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+  <div id="liveAssertive" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
+
+  <!-- Top-Layer Toast Region -->
+  <div id="toastStack" class="toast-region" role="region" aria-label="Notifications"></div>
+
+  <!-- ══════════════════ COMPACT TOP BAR ══════════════════ -->
+  <header class="app-topbar">
+    <div class="topbar-inner">
+      <div class="brand-lockup">
+        <img src="favicon.svg" alt="" class="brand-stamp" width="34" height="34">
+        <div class="brand-text">
+          <span class="brand-name">Daymark</span>
+          <span class="brand-tagline">Small marks, lasting rhythm</span>
         </div>
+      </div>
+
+      <div class="topbar-controls">
+        <div class="topbar-nav-group">
+          <!-- View Switcher Tabs -->
+          <div id="viewModeSwitcher" class="segmented-toggle" role="tablist" aria-label="Workspace view">
+            <button type="button" id="viewTodayBtn" class="segmented-btn" role="tab" aria-selected="true" aria-controls="todayPanel">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Today</span>
+            </button>
+            <button type="button" id="viewGridBtn" class="segmented-btn" role="tab" aria-selected="false" aria-controls="gridPanel">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              <span>Monthly Grid</span>
+            </button>
+          </div>
+
+          <div class="date-nav-group">
+            <select id="monthSelect" class="control-select" aria-label="Select month"></select>
+            <select id="yearSelect" class="control-select" aria-label="Select year"></select>
+          </div>
+        </div>
+
+        <div class="topbar-actions-group">
+          <button type="button" id="newHabitTopBtn" class="btn btn-primary" title="Add a new habit (N)">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span class="btn-label-desktop">New Habit</span>
+          </button>
+
+          <button type="button" id="openKeepsakeBtn" class="btn btn-soft" aria-label="Open Monthly Keepsake print" title="Monthly Keepsake print">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-8"/><path d="M16 12h-8"/><path d="M13 16h-5"/></svg>
+            <span class="btn-label-desktop">Keepsake</span>
+          </button>
+
+          <button type="button" id="privacyToggleBtn" class="icon-btn" aria-pressed="false" aria-label="Toggle privacy blur for notes and habits" title="Blur notes & habits in public (P)">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+
+          <!-- Always-Accessible Guide & Onboarding Menu -->
+          <button type="button" id="helpMenuBtn" class="icon-btn anchor-help-btn" popovertarget="helpMenuPopover" aria-label="Guide, walkthrough and keyboard shortcuts" title="Interactive guide & shortcuts (?)">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </button>
+
+          <div id="helpMenuPopover" class="menu-popover" popover aria-label="Help and onboarding options">
+            <div class="popover-section-label">Learn Daymark</div>
+            <button type="button" id="helpMenuStartTourBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>2-Minute Hands-On Tour</span>
+            </button>
+            <button type="button" id="helpMenuOpenGuideBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <span>User Guide &amp; Shortcuts (?)</span>
+            </button>
+            <button type="button" id="helpMenuShowWelcomeBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span>Show Welcome &amp; Starter Packs</span>
+            </button>
+          </div>
+
+          <!-- Native Popover Overflow Menu -->
+          <button type="button" id="moreMenuBtn" class="icon-btn anchor-more-btn" popovertarget="moreMenuPopover" aria-label="More options and settings" title="Studio preferences, backups & tools">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          </button>
+
+          <div id="moreMenuPopover" class="menu-popover" popover aria-label="Workspace tools and settings">
+            <div class="popover-section-label">Studio</div>
+            <button type="button" id="menuPrefsBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Studio Preferences</span>
+            </button>
+            <button type="button" id="menuArchiveBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              <span>Archived Habits</span>
+            </button>
+            <button type="button" id="menuTourBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Hands-On Interactive Guide</span>
+            </button>
+            <button type="button" id="menuUserGuideBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <span>User Guide &amp; Shortcuts</span>
+            </button>
+
+            <hr class="popover-divider">
+            <div class="popover-section-label">Data &amp; Backup</div>
+            <button type="button" id="menuExportJsonBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Download JSON Backup</span>
+            </button>
+            <button type="button" id="menuImportJsonBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Restore JSON Backup</span>
+            </button>
+            <button type="button" id="menuExportCsvBtn" class="popover-item">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+              <span>Export Month CSV</span>
+            </button>
+
+            <hr class="popover-divider">
+            <button type="button" id="menuClearMonthBtn" class="popover-item popover-item-danger">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              <span>Clear Current Month…</span>
+            </button>
+          </div>
+          <input type="file" id="importJsonInput" accept="application/json,.json" class="hidden" aria-label="Import Daymark JSON backup">
+
+          <!-- Optional Cloud Sync Auth / Account Pill -->
+          <button type="button" id="openAuthBtn" class="btn" title="Optional: sign in to sync across devices">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+            <span class="btn-label-desktop">Cloud Sync</span>
+          </button>
+
+          <div id="accountPill" class="account-pill hidden">
+            <span id="userInitials" class="user-avatar" aria-hidden="true">DM</span>
+            <span id="userEmailText" class="user-email-text"></span>
+            <button type="button" id="syncNowBtn" class="sync-btn" title="Click to sync now">
+              <span id="syncDot" class="sync-dot synced" aria-hidden="true"></span>
+              <span id="syncStatusText">Synced</span>
+            </button>
+            <button type="button" id="signOutBtn" class="icon-btn" aria-label="Sign out" title="Sign out">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════ MAIN WORKSPACE ══════════════════ -->
+  <div class="workspace-shell">
+    <main id="main-content" class="primary-column" tabindex="-1">
+
+      <!-- Compact Editorial Greeting -->
+      <div class="almanac-masthead">
+        <div class="masthead-heading-group">
+          <span id="mastheadKicker" class="masthead-kicker">Today</span>
+          <h1 id="mastheadTitle" class="masthead-title">Good morning — here is your rhythm.</h1>
+          <p id="mastheadMotto" class="masthead-motto">“Small marks, lasting rhythm.”</p>
+        </div>
+      </div>
+
+      <!-- Optional First-Visit Starter Pack Bar (Zero Forced Signup!) -->
+      <div id="starterBannerSlot" class="hidden"></div>
+
+      <!-- ── TODAY VIEW (Default Calm Check-In Deck) ── -->
+      <section id="todayPanel" class="panel" aria-labelledby="todayDateLabel">
+        <div class="today-header-bar">
+          <div class="today-date-row">
+            <div class="day-stepper" role="group" aria-label="Change active day">
+              <button type="button" id="todayPrevDayBtn" class="icon-btn" aria-label="Previous day" title="Previous day">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <h2 id="todayDateLabel" class="today-date-label">Today</h2>
+              <button type="button" id="todayNextDayBtn" class="icon-btn" aria-label="Next day" title="Next day">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button type="button" id="todayJumpNowBtn" class="chip-btn hidden">Back to Today</button>
+            </div>
+            <span id="todayScoreBadge" class="today-score-badge">0 / 0 (0%)</span>
+          </div>
+
+          <div class="today-progress-wrap">
+            <div class="progress-track" aria-hidden="true">
+              <div id="todayProgressFill" class="progress-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="todayHabitsHost"></div>
+
+        <form id="todayAddHabitForm" class="add-habit-form" novalidate>
+          <label for="todayNewHabitInput" class="visually-hidden">Quick add a new habit</label>
+          <input type="text" id="todayNewHabitInput" class="form-input" maxlength="80" placeholder="Add a small daily habit… (e.g. Read 15 mins, Hydrate, Walk)">
+          <button type="submit" class="btn btn-primary">Add Habit</button>
+        </form>
+        <div id="todayAddError" class="form-error" role="alert"></div>
+
+        <!-- Tactile Wellness Check-in -->
+        <div class="wellness-grid">
+          <div class="wellness-box">
+            <div class="wellness-box-head">
+              <span class="wellness-box-title">Mood Check-In (1–10)</span>
+              <span id="todayMoodReadout" class="wellness-readout">Not logged</span>
+            </div>
+            <div id="todayMoodPills" class="mood-pills-row" role="group" aria-label="Mood rating 1 to 10"></div>
+          </div>
+
+          <div class="wellness-box">
+            <div class="wellness-box-head">
+              <span class="wellness-box-title">Hours of Sleep</span>
+              <span id="todaySleepReadout" class="wellness-readout">Not logged</span>
+            </div>
+            <div class="sleep-stepper">
+              <button type="button" id="sleepMinusBtn" class="icon-btn" aria-label="Decrease sleep by 30 minutes">−</button>
+              <span id="todaySleepDisplay" class="sleep-value-display">-- hrs</span>
+              <button type="button" id="sleepPlusBtn" class="icon-btn" aria-label="Increase sleep by 30 minutes">+</button>
+            </div>
+            <div class="sleep-presets" role="group" aria-label="Quick sleep presets">
+              <button type="button" class="chip-btn" data-sleep-preset="6">6h</button>
+              <button type="button" class="chip-btn" data-sleep-preset="7">7h</button>
+              <button type="button" class="chip-btn" data-sleep-preset="7.5">7.5h</button>
+              <button type="button" class="chip-btn" data-sleep-preset="8">8h</button>
+              <button type="button" class="chip-btn" data-sleep-preset="9">9h</button>
+              <button type="button" class="chip-btn" data-sleep-preset="">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unified Daily Note inside Today View -->
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border-subtle);">
+          <div class="journal-toolbar">
+            <label for="todayJournalInput" id="todayJournalTitle" class="panel-title">Daily Note</label>
+            <span id="todayJournalStatus" class="form-hint tabular">Auto-saved</span>
+          </div>
+          <div id="todayJournalPills" class="journal-pills-bar" role="toolbar" aria-label="Reflection prompts"></div>
+          <textarea id="todayJournalInput" class="journal-textarea privacy-sensitive" rows="3" maxlength="5000" placeholder="Capture a quick highlight, thought, or gratitude for today…"></textarea>
+        </div>
+      </section>
+
+      <!-- ── MONTHLY GRID VIEW ── -->
+      <section id="gridPanel" class="panel perf-isolated hidden" aria-labelledby="gridPanelTitleText">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span id="gridPanelTitleText">Monthly Grid</span>
+          </h2>
+          <div class="grid-legend">
+            <span class="legend-dot"><span class="legend-swatch done" aria-hidden="true"></span> Marked</span>
+            <span class="legend-dot"><span class="legend-swatch rest" aria-hidden="true"></span> Rest (Shift/Right-click)</span>
+            <span class="legend-dot"><span class="legend-swatch off" aria-hidden="true"></span> Off-schedule</span>
+          </div>
+        </div>
+
+        <div class="grid-wrapper" tabindex="0" role="region" aria-label="Monthly habit grid (scroll horizontally for all days)">
+          <table class="tracker-grid">
+            <caption class="visually-hidden">Monthly habit check-ins, mood, sleep, and daily notes</caption>
+            <thead id="gridTableHead"></thead>
+            <tbody id="gridTableBody"></tbody>
+            <tbody id="gridWellnessBody"></tbody>
+          </table>
+        </div>
+
+        <form id="gridAddHabitForm" class="add-habit-form" novalidate>
+          <label for="gridNewHabitInput" class="visually-hidden">Add a new habit</label>
+          <input type="text" id="gridNewHabitInput" class="form-input" maxlength="80" placeholder="Add a new habit…">
+          <button type="submit" class="btn btn-primary">Add Habit</button>
+        </form>
+        <div id="gridAddError" class="form-error" role="alert"></div>
+      </section>
+
+      <!-- Daily Progress & Wellness Chart (Visible in Monthly Grid View) -->
+      <section id="chartPanel" class="panel perf-isolated hidden" aria-labelledby="dailyChartHeading">
+        <div class="panel-header">
+          <h2 id="dailyChartHeading" class="panel-title">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Daily Rhythm &amp; Wellness</span>
+          </h2>
+          <span id="dailyChartSummary" class="panel-subtitle"></span>
+        </div>
+        <figure>
+          <div id="dailyChartBox" class="chart-box">
+            <canvas id="dailyMixedChart" role="img" aria-label="Monthly bar and line chart of habits completed, mood, and sleep"></canvas>
+          </div>
+          <figcaption class="visually-hidden">Bars show daily habits marked; solid line shows mood rating; dashed line shows hours of sleep.</figcaption>
+        </figure>
+      </section>
+
+      <!-- Monthly Daily Notes Panel (Visible in Monthly Grid View) -->
+      <section id="gridJournalPanel" class="panel perf-isolated hidden" aria-labelledby="gridJournalTitle">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <span id="gridJournalTitle">Daily Note</span>
+          </h2>
+          <div class="day-stepper">
+            <button type="button" id="gridJournalPrevBtn" class="icon-btn" aria-label="Previous day">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <select id="gridJournalDaySelect" class="control-select" aria-label="Choose day for reflection"></select>
+            <button type="button" id="gridJournalNextBtn" class="icon-btn" aria-label="Next day">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <button type="button" id="gridJournalTodayBtn" class="chip-btn">Today</button>
+          </div>
+        </div>
+
+        <div class="journal-toolbar">
+          <span id="gridJournalDayHeading" style="font-weight:700; color:var(--accent); font-size:0.86rem;"></span>
+          <span id="gridJournalStatus" class="form-hint tabular">Auto-saved</span>
+        </div>
+
+        <div id="gridJournalPills" class="journal-pills-bar" role="toolbar" aria-label="Reflection prompts"></div>
+        <label for="gridJournalInput" class="visually-hidden">Daily reflection note</label>
+        <textarea id="gridJournalInput" class="journal-textarea privacy-sensitive" rows="4" maxlength="5000" placeholder="Write your reflection, highlight, or lesson for this day…"></textarea>
+
+        <div class="journal-history-section">
+          <div class="journal-history-head">
+            <span class="form-label">Notes logged this month</span>
+            <input type="search" id="gridJournalSearch" class="form-input journal-search-input" placeholder="Search notes… (/)" aria-label="Search monthly journal notes">
+          </div>
+          <div id="gridJournalChips" class="journal-chips"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ══════════════════ INSIGHTS SIDEBAR ══════════════════ -->
+    <aside class="insights-sidebar" aria-label="Monthly progress and rhythm insights">
+
+      <!-- Monthly Rhythm Summary -->
+      <section class="panel perf-isolated" aria-labelledby="monthlyRhythmHeading">
+        <div class="panel-header">
+          <h2 id="monthlyRhythmHeading" class="panel-title">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10h-10z"/></svg>
+            <span>Monthly Rhythm</span>
+          </h2>
+          <span id="rhythmCenterPct" class="today-score-badge">0%</span>
+        </div>
+        <div id="donutChartBox" class="chart-box chart-box-compact">
+          <canvas id="overallDoughnutChart" role="img" aria-label="Doughnut chart of monthly habit completion"></canvas>
+        </div>
+        <div class="stat-trio">
+          <div class="stat-tile">
+            <div class="stat-tile-label">Target</div>
+            <div id="statGoal" class="stat-tile-val tabular">0</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Marked</div>
+            <div id="statCompleted" class="stat-tile-val tabular">0</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Left</div>
+            <div id="statLeft" class="stat-tile-val tabular">0</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Habit Momentum (Cross-Month Streaks) -->
+      <section class="panel perf-isolated" aria-labelledby="momentumHeading">
+        <div class="panel-header">
+          <h2 id="momentumHeading" class="panel-title">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <span>Habit Momentum</span>
+          </h2>
+          <span class="panel-subtitle">Cross-month streaks</span>
+        </div>
+        <table class="momentum-table">
+          <caption class="visually-hidden">Per-habit completion rate, active streak, and all-time best streak</caption>
+          <thead>
+            <tr>
+              <th scope="col">Habit</th>
+              <th scope="col">Marks</th>
+              <th scope="col">Rate</th>
+              <th scope="col" title="Current active cross-month streak">Now</th>
+              <th scope="col" title="All-time best streak across all months">Best</th>
+            </tr>
+          </thead>
+          <tbody id="momentumTableBody"></tbody>
+        </table>
+      </section>
+
+      <!-- Rhythm Insights -->
+      <section id="rhythmInsightsPanel" class="panel perf-isolated" aria-labelledby="insightsHeading">
+        <div class="panel-header">
+          <h2 id="insightsHeading" class="panel-title">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h5l3 7 4-14 3 7h5"/></svg>
+            <span>Rhythm Insights</span>
+          </h2>
+        </div>
+        <div id="rhythmInsightsHost" class="insights-stack"></div>
+      </section>
+
+    </aside>
+  </div>
+
+  <!-- ══════════════════ NATIVE TOP-LAYER DIALOGS ══════════════════ -->
+
+  <!-- 1. Safe Confirmation Dialog (Cancel auto-focused for destructive safety!) -->
+  <dialog id="confirmDialog" class="dm-dialog" closedby="any" aria-labelledby="confirmDialogTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="confirmDialogTitle" class="dialog-title">Confirm action</h1>
+      </div>
+    </div>
+    <div class="dialog-body">
+      <p id="confirmDialogMsg" style="font-size:0.9rem; color:var(--text-secondary);"></p>
+    </div>
+    <form method="dialog" class="dialog-footer">
+      <button type="submit" value="cancel" id="confirmDialogCancel" class="btn" autofocus>Cancel</button>
+      <button type="submit" value="confirm" id="confirmDialogOk" class="btn btn-danger">Confirm</button>
+    </form>
+  </dialog>
+
+  <!-- 2. Habit Add / Edit Dialog (Name, Icon, Routine, Flexible Schedule) -->
+  <dialog id="habitEditorDialog" class="dm-dialog dm-dialog-wide" closedby="any" aria-labelledby="habitEditorTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="habitEditorTitle" class="dialog-title">New habit</h1>
+        <p class="dialog-subtitle">Choose a friendly name, routine time, and the days you want it scheduled.</p>
+      </div>
+      <button type="button" id="habitEditorCancel" class="icon-btn" aria-label="Close habit editor">✕</button>
+    </div>
+    <form id="habitEditorForm">
+      <div class="dialog-body">
+        <div class="form-group">
+          <label for="habitNameField" class="form-label">Habit name</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span id="habitDialogIconPreview" class="habit-card-emoji" aria-hidden="true">✦</span>
+            <input type="text" id="habitNameField" class="form-input" maxlength="80" required placeholder="e.g. Morning walk, Read 15 mins, Hydrate">
+          </div>
+          <div id="habitEditorError" class="form-error" role="alert"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="habitRoutineField" class="form-label">Routine group</label>
+          <select id="habitRoutineField" class="control-select"></select>
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+            <span class="form-label">Scheduled days</span>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+              <button type="button" class="chip-btn" data-schedule-preset="daily">Daily</button>
+              <button type="button" class="chip-btn" data-schedule-preset="weekdays">Weekdays</button>
+              <button type="button" class="chip-btn" data-schedule-preset="mwf">Mon/Wed/Fri</button>
+              <button type="button" class="chip-btn" data-schedule-preset="weekends">Weekends</button>
+            </div>
+          </div>
+          <div id="habitSchedulePicker" class="weekday-picker" role="group" aria-label="Select days of the week"></div>
+          <span class="form-hint">Unscheduled days won't count against your score or break your streak.</span>
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <label for="habitDialogEmojiSearch" class="form-label">Habit icon</label>
+            <button type="button" id="habitAutoIconBtn" class="chip-btn">Auto-match icon</button>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input type="search" id="habitDialogEmojiSearch" class="form-input" style="flex:1 1 160px;" placeholder="Search icons (water, read, walk)…">
+            <input type="text" id="habitCustomEmojiField" class="form-input" style="width:110px; text-align:center;" maxlength="4" placeholder="Any emoji" aria-label="Custom emoji">
+          </div>
+          <div id="habitEmojiCatBar" style="display:flex; gap:4px; flex-wrap:wrap; margin-top:2px;"></div>
+          <div id="habitDialogEmojiGrid" class="emoji-grid" role="group" aria-label="Choose an icon"></div>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" id="habitEditorCancelFooter" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Habit</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 3. Studio Preferences Dialog -->
+  <dialog id="prefsDialog" class="dm-dialog dm-dialog-wide" closedby="any" aria-labelledby="prefsDialogTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="prefsDialogTitle" class="dialog-title">Studio Preferences</h1>
+        <p class="dialog-subtitle">Tune Daymark's paper, ink accent, calendar week start, and personal motto.</p>
+      </div>
+      <button type="button" id="prefsCloseBtn" class="icon-btn" aria-label="Close preferences">✕</button>
+    </div>
+    <form id="prefsForm">
+      <div class="dialog-body">
+        <div class="form-group">
+          <span class="form-label">Paper Appearance</span>
+          <div class="choice-grid" role="group" aria-label="Appearance mode">
+            <button type="button" class="choice-card" data-pref-appearance="system" aria-pressed="true">System Auto</button>
+            <button type="button" class="choice-card" data-pref-appearance="light" aria-pressed="false">Linen Paper</button>
+            <button type="button" class="choice-card" data-pref-appearance="dark" aria-pressed="false">Evening Ink</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">Studio Ink Accent</span>
+          <div class="choice-grid" role="group" aria-label="Ink color accent">
+            <button type="button" class="choice-card" data-pref-ink="terracotta" aria-pressed="true">
+              <span class="ink-dot" style="background:#C4532E;" aria-hidden="true"></span>
+              <span>Terracotta</span>
+            </button>
+            <button type="button" class="choice-card" data-pref-ink="sage" aria-pressed="false">
+              <span class="ink-dot" style="background:#26664E;" aria-hidden="true"></span>
+              <span>Botanical Sage</span>
+            </button>
+            <button type="button" class="choice-card" data-pref-ink="indigo" aria-pressed="false">
+              <span class="ink-dot" style="background:#335496;" aria-hidden="true"></span>
+              <span>Indigo Ink</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">Calendar Week Starts On</span>
+          <div class="choice-grid" style="grid-template-columns:1fr 1fr;" role="group" aria-label="First day of week">
+            <button type="button" class="choice-card" data-pref-week="0" aria-pressed="true">Sunday</button>
+            <button type="button" class="choice-card" data-pref-week="1" aria-pressed="false">Monday</button>
+          </div>
+        </div>
+
+        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; padding:10px 12px; border:1px solid var(--border-subtle); border-radius:var(--radius-sm); background:var(--bg-canvas);">
+          <span>
+            <strong style="display:block; font-size:0.86rem;">Subtle Dot-Grid Paper</strong>
+            <span class="form-hint">Soft stationery dot pattern on the workspace background.</span>
+          </span>
+          <input type="checkbox" id="prefPaperDots" class="stamp-checkbox">
+        </label>
+
+        <div class="form-group">
+          <label for="prefMottoInput" class="form-label">Personal Motto (optional)</label>
+          <input type="text" id="prefMottoInput" class="form-input" maxlength="140" placeholder="Small marks, lasting rhythm.">
+        </div>
+
+        <div class="form-group">
+          <label for="prefJournalTitleInput" class="form-label">Journal Section Title</label>
+          <input type="text" id="prefJournalTitleInput" class="form-input" maxlength="40" placeholder="Daily Note, Gratitude Log, Study Diary…">
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button type="submit" class="btn btn-primary">Save Preferences</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 4. Monthly Keepsake Print Dialog -->
+  <dialog id="keepsakeDialog" class="dm-dialog" closedby="any" aria-labelledby="keepsakeDialogTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="keepsakeDialogTitle" class="dialog-title">Monthly Keepsake</h1>
+        <p class="dialog-subtitle">A letterpress summary of your rhythm to keep or share.</p>
+      </div>
+      <button type="button" id="ksCloseBtn" class="icon-btn" aria-label="Close Monthly Keepsake">✕</button>
+    </div>
+    <div class="dialog-body">
+      <div class="keepsake-card">
+        <div class="keepsake-head">
+          <div class="keepsake-brand">Daymark</div>
+          <div id="ksPeriod" class="keepsake-period">NOVEMBER 2026</div>
+        </div>
+        <hr class="keepsake-rule">
+        <div class="keepsake-row emphasis">
+          <span class="keepsake-label">MONTHLY RHYTHM</span>
+          <span id="ksRate" class="keepsake-val">0%</span>
+        </div>
+        <div class="keepsake-row">
+          <span class="keepsake-label">MARKS LOGGED</span>
+          <span id="ksLogged" class="keepsake-val">0 / 0</span>
+        </div>
+        <div class="keepsake-row">
+          <span class="keepsake-label">ACTIVE STREAK</span>
+          <span id="ksStreak" class="keepsake-val">0 days</span>
+        </div>
+        <div class="keepsake-row">
+          <span class="keepsake-label">AVG SLEEP</span>
+          <span id="ksSleep" class="keepsake-val">--</span>
+        </div>
+        <div class="keepsake-row">
+          <span class="keepsake-label">AVG MOOD</span>
+          <span id="ksMood" class="keepsake-val">--</span>
+        </div>
+        <hr class="keepsake-rule">
+        <div class="keepsake-section-head">ANCHOR HABITS</div>
+        <div id="ksTopHabits"></div>
+        <hr class="keepsake-rule">
+        <div id="ksMotto" class="keepsake-motto">“Small marks, lasting rhythm.”</div>
+        <div id="ksFooter" class="keepsake-stamp-footer">DAYMARK · SMALL MARKS, LASTING RHYTHM</div>
+      </div>
+    </div>
+    <div class="dialog-footer">
+      <button type="button" id="ksCopyBtn" class="btn">Copy Image</button>
+      <button type="button" id="ksDownloadBtn" class="btn btn-primary">Download PNG</button>
+    </div>
+  </dialog>
+
+  <!-- 5. Day Note Inspector Dialog -->
+  <dialog id="dayNoteDialog" class="dm-dialog" closedby="any" aria-labelledby="dayNoteDialogTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="dayNoteDialogTitle" class="dialog-title">Daily Note</h1>
+        <p id="dayNoteDialogSub" class="dialog-subtitle"></p>
+      </div>
+    </div>
+    <form id="dayNoteDialogForm">
+      <div class="dialog-body">
+        <div id="dayNoteDialogPills" class="journal-pills-bar" role="toolbar" aria-label="Reflection prompts"></div>
+        <label for="dayNoteDialogInput" class="visually-hidden">Note for selected date</label>
+        <textarea id="dayNoteDialogInput" class="journal-textarea" rows="5" maxlength="5000" placeholder="Write your reflection for this date…"></textarea>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" id="dayNoteDialogCancel" class="btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Note</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 6. Archived Habits Dialog -->
+  <dialog id="archiveDialog" class="dm-dialog dm-dialog-wide" closedby="any" aria-labelledby="archiveDialogTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="archiveDialogTitle" class="dialog-title">Archived Habits</h1>
+        <p class="dialog-subtitle">Archived habits keep all historical check-ins intact and can be restored anytime.</p>
+      </div>
+      <button type="button" id="archiveCloseBtn" class="icon-btn" aria-label="Close archived habits">✕</button>
+    </div>
+    <div id="archiveList" class="dialog-body"></div>
+  </dialog>
+
+  <!-- 7. Cloud Sync Auth Dialog (Sign In / Sign Up / Reset Password) -->
+  <dialog id="authDialog" class="dm-dialog" closedby="any" aria-labelledby="authDialogTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="authDialogTitle" class="dialog-title">Sign in to sync</h1>
+        <p id="authDialogSubtitle" class="dialog-subtitle">Access your Daymark rhythm from any device.</p>
+      </div>
+    </div>
+    <form id="authForm">
+      <div class="dialog-body">
+        <div class="form-group">
+          <label for="authEmailField" class="form-label">Email address</label>
+          <input type="email" id="authEmailField" class="form-input" autocomplete="email" required placeholder="you@example.com">
+        </div>
+
+        <div id="authPasswordGroup" class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label for="authPasswordField" class="form-label">Password</label>
+            <button type="button" id="authForgotBtn" class="btn btn-ghost" style="padding:2px 6px; min-block-size:24px; font-size:0.75rem;">Forgot password?</button>
+          </div>
+          <div class="password-wrap">
+            <input type="password" id="authPasswordField" class="form-input" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters">
+            <button type="button" id="authPwToggle" class="icon-btn password-toggle-btn" aria-pressed="false" aria-label="Show password">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="authFormError" class="form-error" role="alert"></div>
+
+        <button type="button" id="authSwitchModeBtn" class="btn btn-ghost" style="align-self:center; font-size:0.8rem;">
+          Don't have an account? Create one
+        </button>
+      </div>
+      <div class="dialog-footer">
+        <button type="button" id="authCancelBtn" class="btn">Cancel</button>
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary">Sign In</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 8. Safe Sign-Out Choice Dialog (Shared-Device Data Safety) -->
+  <dialog id="signOutDialog" class="dm-dialog" closedby="any" aria-labelledby="signOutDialogTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="signOutDialogTitle" class="dialog-title">Sign out of Daymark?</h1>
+        <p class="dialog-subtitle">Signed in as <strong id="signOutEmailLabel"></strong>.</p>
+      </div>
+    </div>
+    <div class="dialog-body">
+      <p style="font-size:0.88rem; color:var(--text-secondary);">
+        Your data stays safely backed up in your cloud account. On a shared or public computer, choose <strong>Clear this device</strong> so your private notes aren't left behind.
+      </p>
+    </div>
+    <form method="dialog" class="dialog-footer">
+      <button type="submit" value="cancel" id="signOutCancelBtn" class="btn" autofocus>Cancel</button>
+      <button type="submit" value="keep" class="btn">Sign out &amp; keep local copy</button>
+      <button type="submit" value="clear" class="btn btn-danger-outline">Sign out &amp; clear this device</button>
+    </form>
+  </dialog>
+
+  <!-- 9. Complete User Guide & Keyboard Shortcuts Reference Dialog -->
+  <dialog id="guideDialog" class="dm-dialog dm-dialog-wide" closedby="any" aria-labelledby="guideDialogTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="guideDialogTitle" class="dialog-title">Daymark User Guide</h1>
+        <p class="dialog-subtitle">Everything you need to build a calm, sustainable daily rhythm.</p>
+      </div>
+      <button type="button" id="guideCloseBtn" class="icon-btn" aria-label="Close user guide">✕</button>
     </div>
 
-    <!-- ══ Auth Modal (cloud sync sign-in / sign-up) ════════ -->
-    <div class="modal-overlay" id="authModalOverlay" role="dialog" aria-modal="true">
-        <div class="modal-box auth-modal-box">
-            <h3 class="modal-title" id="authModalTitle">Sign in to sync</h3>
-            <p class="modal-subtitle">Sync your habits and streaks securely across every device.</p>
-            <div class="auth-form-body">
-                <div class="form-group">
-                    <label class="form-label" for="authEmail">Email address</label>
-                    <input type="email" id="authEmail" class="form-input" placeholder="you@example.com" autocomplete="email">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="authPassword">Password</label>
-                    <input type="password" id="authPassword" class="form-input" placeholder="••••••••" autocomplete="current-password">
-                </div>
-                <div id="authError" class="auth-error" role="alert" aria-live="assertive"></div>
-                <div class="auth-btn-row">
-                    <button class="btn" id="authCancelBtn">Cancel</button>
-                    <button class="btn btn-primary" id="authActionBtn">Sign In</button>
-                </div>
-                <p class="auth-switch-row">
-                    <button class="link-btn" id="authToggleMode">Don't have an account? Sign up</button>
-                </p>
-            </div>
-        </div>
+    <div class="guide-tabbar" role="tablist" aria-label="User guide sections">
+      <button type="button" class="segmented-btn active" role="tab" aria-selected="true" data-guide-tab="basics">How It Works</button>
+      <button type="button" class="segmented-btn" role="tab" aria-selected="false" data-guide-tab="features">Features &amp; Tips</button>
+      <button type="button" class="segmented-btn" role="tab" aria-selected="false" data-guide-tab="data">Data, Sync &amp; Keys</button>
     </div>
 
-    <!-- ══ Discipline Receipt Modal ══════════════════════════ -->
-    <div class="modal-overlay" id="receiptModalOverlay" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle">
-        <div class="modal-box receipt-modal-box">
-            <div id="receiptPaper" class="receipt-paper">
-                <div class="receipt-header">
-                    <div class="receipt-brand">✦ DISCIPLINE RECEIPT ✦</div>
-                    <div class="receipt-subtitle" id="receiptMonthYear">OCTOBER 2026</div>
-                </div>
-                <hr class="receipt-divider">
-                <div class="receipt-row bold">
-                    <span class="receipt-label">DISCIPLINE RATE</span>
-                    <span class="receipt-value" id="rcptRate">0%</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">HABITS LOGGED</span>
-                    <span class="receipt-value" id="rcptLogged">0 / 0</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">ACTIVE STREAK</span>
-                    <span class="receipt-value" id="rcptStreak">0 days</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">AVG SLEEP</span>
-                    <span class="receipt-value" id="rcptSleep">-- hrs</span>
-                </div>
-                <div class="receipt-row">
-                    <span class="receipt-label">AVG MOOD</span>
-                    <span class="receipt-value" id="rcptMood">-- / 10</span>
-                </div>
-                <hr class="receipt-divider">
-                <div class="receipt-habits-title">TOP DISCIPLINE HABITS</div>
-                <div id="rcptTopHabits"></div>
-                <hr class="receipt-divider">
-                <div class="receipt-barcode" aria-hidden="true">
-                    <span class="barcode-bar" style="width:2px"></span>
-                    <span class="barcode-bar" style="width:4px"></span>
-                    <span class="barcode-bar" style="width:1px"></span>
-                    <span class="barcode-bar" style="width:3px"></span>
-                    <span class="barcode-bar" style="width:2px"></span>
-                    <span class="barcode-bar" style="width:5px"></span>
-                    <span class="barcode-bar" style="width:1px"></span>
-                    <span class="barcode-bar" style="width:3px"></span>
-                    <span class="barcode-bar" style="width:4px"></span>
-                    <span class="barcode-bar" style="width:2px"></span>
-                    <span class="barcode-bar" style="width:1px"></span>
-                    <span class="barcode-bar" style="width:3px"></span>
-                    <span class="barcode-bar" style="width:4px"></span>
-                    <span class="barcode-bar" style="width:2px"></span>
-                </div>
-                <div class="receipt-quote">"We are what we repeatedly do."</div>
-                <div class="receipt-footer-url">habit-tracker · jhrmmartin.github.io</div>
-            </div>
-            <div class="receipt-actions">
-                <button class="btn btn-primary" onclick="downloadReceiptPNG()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Download PNG
-                </button>
-                <button class="btn" id="copyReceiptBtn" onclick="copyReceiptToClipboard()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    Copy Image
-                </button>
-                <button class="btn" onclick="closeReceiptModal()">Close</button>
-            </div>
+    <div class="dialog-body">
+      <!-- Tab 1: How It Works -->
+      <div class="guide-section" data-guide-panel="basics">
+        <div class="guide-card">
+          <h2>The three mark states</h2>
+          <p>Daymark is built for real human schedules—not perfectionism. Every habit day can hold one of three clear states:</p>
+          <ul class="guide-legend-list">
+            <li>
+              <span class="legend-swatch done" aria-hidden="true"></span>
+              <div>
+                <strong>Stamped (Done)</strong> — Check off a habit in Today or click a square in Monthly Grid. Builds your rhythm and streak.
+              </div>
+            </li>
+            <li>
+              <span class="legend-swatch rest" aria-hidden="true"></span>
+              <div>
+                <strong>Rest Day (Streak Protected)</strong> — Tap the moon icon in Today (or Shift+click / right-click a cell in Monthly Grid). Ideal for illness, travel, or planned recovery: keeps your streak alive and excludes that day from your target score.
+              </div>
+            </li>
+            <li>
+              <span class="legend-swatch off" aria-hidden="true"></span>
+              <div>
+                <strong>Off-Schedule Day</strong> — When you schedule a habit for specific weekdays (e.g., Mon/Wed/Fri), other days appear gently dashed and never break your streak.
+              </div>
+            </li>
+          </ul>
         </div>
+
+        <div class="guide-card">
+          <h2>True cross-month streaks &amp; mid-day grace</h2>
+          <p>Your streaks carry smoothly across month boundaries (never resetting on the 1st), and your active streak stays alive throughout today until midnight so mornings never start at zero.</p>
+        </div>
+
+        <div class="guide-card">
+          <h2>Today view vs. Monthly Grid</h2>
+          <p>Use <strong>Today</strong> for calm 10-second daily check-ins grouped by Morning, Afternoon, Evening, and Anytime (with arrow buttons to step back to yesterday). Switch to <strong>Monthly Grid</strong> anytime to scan real calendar weeks, spot patterns, and bulk-update days.</p>
+        </div>
+      </div>
+
+      <!-- Tab 2: Features & Tips -->
+      <div class="guide-section hidden" data-guide-panel="features">
+        <div class="guide-card">
+          <h2>Mood, Sleep &amp; Rhythm Insights</h2>
+          <p>Log your daily Mood (1–10) and Sleep (in 30-minute increments). Once you have a few logged days, <strong>Rhythm Insights</strong> automatically surfaces plain-English patterns—like how 7+ hours of sleep lifts your completion rate or which weekday is your strongest.</p>
+        </div>
+
+        <div class="guide-card">
+          <h2>Unified Daily Note &amp; Prompt Tags</h2>
+          <p>Jot a highlight, gratitude, or lesson in 30 seconds. Tap prompt pills to beat blank-page friction, add your own custom tags, or search past notes from the Monthly Grid view. Clicking any day number in the grid header opens that date’s note.</p>
+        </div>
+
+        <div class="guide-card">
+          <h2>Editing, Archiving &amp; Undo</h2>
+          <p>Click the pencil icon on any habit to rename it, swap its icon, or adjust its weekday schedule—your past marks stay untouched. Done with a habit for now? Choose <strong>Archive</strong> instead of Delete to hide it from Today while preserving all historical stats. Deleted or cleared something by accident? Click <strong>Undo</strong> in the notification toast.</p>
+        </div>
+
+        <div class="guide-card">
+          <h2>Monthly Keepsake &amp; Studio Preferences</h2>
+          <p>Click <strong>Keepsake</strong> to preview and download or copy a letterpress summary PNG matched to your current theme. Open <strong>⋯ → Studio Preferences</strong> to switch between <em>Linen Paper</em> (light), <em>Evening Ink</em> (dark), three Studio Ink accents, Sunday/Monday week start, dot-grid paper, and your personal motto.</p>
+        </div>
+      </div>
+
+      <!-- Tab 3: Data, Sync & Shortcuts -->
+      <div class="guide-section hidden" data-guide-panel="data">
+        <div class="guide-card">
+          <h2>Local-first privacy &amp; optional Cloud Sync</h2>
+          <p>Daymark works 100% offline in your browser with no account required. If you want cross-device sync, click <strong>Cloud Sync</strong> to sign in—offline edits merge safely without overwriting local marks. On shared computers, signing out lets you choose whether to keep or wipe local browser data.</p>
+        </div>
+
+        <div class="guide-card">
+          <h2>Backups, CSV Export &amp; Privacy Blur</h2>
+          <p>Open <strong>⋯</strong> to download a full <strong>JSON Backup</strong> (all months, schedules, journals, and preferences) or restore one on a new browser, or export the active month to spreadsheet-safe <strong>CSV</strong> (including Daily Notes). Tap the eye icon (or press <kbd>P</kbd>) to softly blur habit names and personal notes when using Daymark in public.</p>
+        </div>
+
+        <div class="guide-card">
+          <h2>Keyboard Shortcuts</h2>
+          <dl class="shortcuts-list">
+            <div><dt><kbd>T</kbd></dt><dd>Switch to Today view</dd></div>
+            <div><dt><kbd>G</kbd></dt><dd>Switch to Monthly Grid view</dd></div>
+            <div><dt><kbd>N</kbd></dt><dd>Create a new habit</dd></div>
+            <div><dt><kbd>P</kbd></dt><dd>Toggle Privacy Blur</dd></div>
+            <div><dt><kbd>/</kbd></dt><dd>Search Monthly Notes (in Grid view)</dd></div>
+            <div><dt><kbd>?</kbd></dt><dd>Open this User Guide</dd></div>
+            <div><dt><kbd>Shift</kbd> + Click</dt><dd>Toggle Rest Day in Monthly Grid</dd></div>
+          </dl>
+        </div>
+      </div>
     </div>
 
-    <!-- ══ Interactive Onboarding Guided Tour (Hands-on Live Spotlight) ══ -->
-    <div id="interactiveTourOverlay" class="tour-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tourStepTitle">
-        <!-- Dynamic SVG Cutout Mask for Darkened Backdrop & Spotlight -->
-        <svg class="tour-spotlight-svg" aria-hidden="true">
-            <defs>
-                <mask id="tourSpotlightMask">
-                    <!-- White area remains dark overlay -->
-                    <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                    <!-- Black cutout creates the transparent spotlight window -->
-                    <rect id="tourMaskCutout" x="0" y="0" width="0" height="0" rx="10" ry="10" fill="black" />
-                </mask>
-            </defs>
-            <rect x="0" y="0" width="100%" height="100%" fill="rgba(6, 9, 14, 0.78)" mask="url(#tourSpotlightMask)" />
-        </svg>
+    <div class="dialog-footer">
+      <button type="button" id="guideStartTourBtn" class="btn btn-soft">Start 2-Minute Hands-On Tour</button>
+      <form method="dialog" style="display:inline;">
+        <button type="submit" class="btn btn-primary">Got It</button>
+      </form>
+    </div>
+  </dialog>
 
-        <!-- Animated Pulsing Focus Frame surrounding the spotlighted target -->
-        <div id="tourTargetOutline" class="tour-target-outline" aria-hidden="true">
-            <div class="tour-beacon-pulse"></div>
-        </div>
-
-        <!-- Floating Interactive Tour Card (docked dynamically) -->
-        <div id="tourCard" class="tour-card" role="region" aria-label="Interactive Tour Step">
-            <!-- Header: Step badge, interactive pill, exit button -->
-            <div class="tour-card-header">
-                <div class="tour-badge-row">
-                    <span class="tour-step-badge" id="tourStepBadge">Step 1 of 8</span>
-                    <span class="tour-interactive-badge">⚡ Interactive Guide</span>
-                </div>
-                <button class="tour-close-btn" id="tourCloseBtn" onclick="exitInteractiveTour()" title="Exit Tour (Esc)" aria-label="Exit tour">✕</button>
-            </div>
-
-            <!-- Progress Track -->
-            <div class="tour-progress-track" aria-hidden="true">
-                <div class="tour-progress-bar" id="tourProgressBar" style="width: 12.5%;"></div>
-            </div>
-
-            <!-- Tour Step Content -->
-            <div class="tour-card-body">
-                <h3 class="tour-step-title" id="tourStepTitle">Workspace Identity</h3>
-                <p class="tour-step-desc" id="tourStepDesc">Your habit tracker is organized like a Notion page. You can customize the cover banner, page emoji, title, and daily motivational quote.</p>
-
-                <!-- Hands-On Interactive Challenge Box -->
-                <div class="tour-action-box" id="tourActionBox">
-                    <div class="tour-action-header">
-                        <span class="tour-action-label" id="tourActionLabel">🎯 TRY IT NOW:</span>
-                        <span class="tour-action-status" id="tourActionStatus">Waiting for action...</span>
-                    </div>
-                    <div class="tour-action-prompt" id="tourActionPrompt">Tap the emoji icon ⚡ or click the title to personalize!</div>
-                </div>
-
-                <!-- Custom Step Insert (e.g. Inline Sign-Up / Auth Form for mandatory step) -->
-                <div class="tour-custom-slot" id="tourCustomSlot"></div>
-            </div>
-
-            <!-- Footer Navigation -->
-            <div class="tour-card-footer">
-                <button class="btn btn-ghost tour-skip-btn" id="tourSkipBtn" onclick="exitInteractiveTour()">Skip Tour</button>
-                <div class="tour-nav-btns">
-                    <button class="btn btn-ghost" id="tourPrevBtn" onclick="prevTourStep()">← Back</button>
-                    <button class="btn btn-primary" id="tourNextBtn" onclick="nextTourStep()">Next Step →</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Confetti Canvas for celebration -->
-        <canvas id="tourConfettiCanvas" class="tour-confetti-canvas" aria-hidden="true"></canvas>
+  <!-- Opt-In Persistent Hands-On Interactive Walkthrough (popover="manual") -->
+  <dialog id="tourPopover" class="tour-dialog" popover="manual" role="dialog" aria-labelledby="tourStepTitle">
+    <div class="tour-head">
+      <div class="tour-badges">
+        <span id="tourStepCount" class="today-score-badge">Step 1 of 8</span>
+        <span id="tourStepTag" class="tour-tag-pill">Daily Check-In</span>
+      </div>
+      <button type="button" id="tourCloseBtn" class="icon-btn" popovertarget="tourPopover" popovertargetaction="hide" aria-label="Close interactive walkthrough" title="Close walkthrough (Esc)">✕</button>
     </div>
 
-    <!-- ══ Day Reflection Inspector Modal ════════════════════ -->
-    <div class="modal-overlay" id="dayNoteModalOverlay" role="dialog" aria-modal="true" aria-labelledby="dayNoteTitle">
-        <div class="modal-box day-note-modal-box">
-            <h3 class="modal-title" id="dayNoteTitle">Daily Reflection</h3>
-            <p class="modal-subtitle" id="dayNoteSubtitle">View or edit your entry for this date.</p>
-            <div class="journal-prompt-pills" id="modalJournalPromptPills" role="toolbar" aria-label="Modal reflection prompt pills"></div>
-            <textarea id="dayNoteModalInput" class="today-journal-textarea" rows="4" placeholder="No entry logged yet for this date. Write your thoughts or notes here…"></textarea>
-            <div class="modal-actions">
-                <button class="btn" onclick="closeDayNoteModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveDayNoteFromModal()">Save</button>
-            </div>
-        </div>
+    <div class="progress-track tour-progress" aria-hidden="true">
+      <div id="tourProgressFill" class="progress-fill" style="width:12.5%"></div>
     </div>
 
-    <!-- ══ Rename Journal Type Modal ═════════════════════════ -->
-    <div class="modal-overlay" id="renameJournalModalOverlay" role="dialog" aria-modal="true" aria-labelledby="renameJournalTitle">
-        <div class="modal-box rename-journal-modal-box">
-            <h3 class="modal-title" id="renameJournalTitle">What kind of journal is this?</h3>
-            <p class="modal-subtitle">Pick a popular journal type or write your own custom name.</p>
-            <div class="journal-type-presets" role="toolbar" aria-label="Quick journal presets">
-                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Daily Reflection &amp; Win')">Daily Reflection</button>
-                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Gratitude Journal')">Gratitude Journal</button>
-                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Work &amp; Focus Log')">Work &amp; Focus Log</button>
-                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Fitness &amp; Health Log')">Fitness Log</button>
-                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Evening Brain Dump')">Evening Brain Dump</button>
-                <button type="button" class="preset-tag-btn" onclick="selectJournalPreset('Stoic Diary')">Stoic Diary</button>
-            </div>
-            <div class="form-group">
-                <label class="form-label" for="customJournalTitleInput">Custom Journal Title</label>
-                <input type="text" id="customJournalTitleInput" class="form-input" placeholder="e.g. My Discipline Notes, Trading Journal, Thoughts…" maxlength="40">
-            </div>
-            <div class="modal-actions">
-                <button class="btn" onclick="closeRenameJournalModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveJournalTitle()">Save Title</button>
-            </div>
-        </div>
+    <h2 id="tourStepTitle" class="dialog-title" style="font-size:1.05rem;"></h2>
+    <p id="tourStepDesc" class="tour-desc"></p>
+
+    <div id="tourTryBox" class="tour-try-box">
+      <span id="tourTryStatus" class="tour-try-status">Try it now</span>
+      <span id="tourTryText" class="tour-try-text"></span>
     </div>
 
-    <!-- ══ Notion-Style Layout & Aesthetic Customizer Modal ══ -->
-    <div class="modal-overlay" id="customizeLayoutModalOverlay" role="dialog" aria-modal="true" aria-labelledby="customModalTitle">
-        <div class="modal-box customizer-modal-box">
-            <div class="customizer-modal-header">
-                <div>
-                    <h3 class="modal-title" id="customModalTitle">🎨 Customize Workspace</h3>
-                    <p class="modal-subtitle">Make your habit tracker your own with Notion-style aesthetics, covers &amp; layouts.</p>
-                </div>
-                <button class="icon-btn" onclick="closeCustomizeModal()" aria-label="Close customizer">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-            </div>
-
-            <!-- Customizer Tab Bar -->
-            <div class="customizer-tabs" role="tablist">
-                <button class="custom-tab-btn active" id="tabBtnCover" onclick="switchCustomTab('cover')">🖼️ Cover</button>
-                <button class="custom-tab-btn" id="tabBtnIdentity" onclick="switchCustomTab('identity')">⚡ Page Icon</button>
-                <button class="custom-tab-btn" id="tabBtnAtmosphere" onclick="switchCustomTab('atmosphere')">🌌 Atmosphere</button>
-                <button class="custom-tab-btn" id="tabBtnTypography" onclick="switchCustomTab('typography')">✍️ Typography</button>
-            </div>
-
-            <!-- Tab 1: Cover Banner -->
-            <div class="custom-tab-panel" id="customPanelCover">
-                <div class="customizer-section-header">
-                    <span class="custom-section-title">Cover Banner Image</span>
-                    <label class="custom-toggle-label">
-                        <input type="checkbox" id="coverVisibilityCheckbox" onchange="handleCoverVisibilityToggle(this.checked)">
-                        <span>Show Banner</span>
-                    </label>
-                </div>
-                <p class="customizer-help-text">Choose a curated aesthetic preset, enter a custom URL, or upload from your device.</p>
-
-                <div class="preset-covers-grid" id="presetCoversGrid">
-                    <!-- Populated by JS -->
-                </div>
-
-                <div class="custom-input-group" style="margin-top: 14px;">
-                    <label class="form-label" for="customCoverUrlInput">Custom Image URL</label>
-                    <div style="display:flex; gap:8px;">
-                        <input type="url" id="customCoverUrlInput" class="form-input" placeholder="https://images.unsplash.com/photo-..." style="flex:1;">
-                        <button class="btn btn-primary" onclick="applyCustomCoverUrl()">Apply URL</button>
-                    </div>
-                </div>
-
-                <div style="display:flex; gap:10px; margin-top:12px; align-items:center; flex-wrap:wrap;">
-                    <input type="file" id="coverFileInput" accept="image/*" style="display:none;" onchange="handleCoverFileUpload(event)">
-                    <button class="btn" onclick="document.getElementById('coverFileInput').click()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        Upload From Device
-                    </button>
-                    <button class="btn btn-ghost" onclick="resetCoverToDefault()">Reset Default</button>
-                </div>
-                <div class="custom-control-row" style="margin-top: 14px; display: flex; gap: 16px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 140px;">
-                        <label class="form-label">Banner Height</label>
-                        <div class="preset-tag-group" id="coverHeightSelector" style="display:flex; gap:6px;">
-                            <button type="button" class="preset-tag-btn" data-height="170px" onclick="setNotionCoverHeight('170px')">Compact</button>
-                            <button type="button" class="preset-tag-btn active" data-height="240px" onclick="setNotionCoverHeight('240px')">Standard</button>
-                            <button type="button" class="preset-tag-btn" data-height="310px" onclick="setNotionCoverHeight('310px')">Expanded</button>
-                        </div>
-                    </div>
-                    <div style="flex: 1; min-width: 140px;">
-                        <label class="form-label">Image Focus / Crop</label>
-                        <div class="preset-tag-group" id="coverPosSelector" style="display:flex; gap:6px;">
-                            <button type="button" class="preset-tag-btn" data-pos="center top" onclick="setNotionCoverPosition('center top')">Top</button>
-                            <button type="button" class="preset-tag-btn active" data-pos="center 35%" onclick="setNotionCoverPosition('center 35%')">Upper</button>
-                            <button type="button" class="preset-tag-btn" data-pos="center center" onclick="setNotionCoverPosition('center center')">Center</button>
-                            <button type="button" class="preset-tag-btn" data-pos="center bottom" onclick="setNotionCoverPosition('center bottom')">Bottom</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab 2: Page Identity -->
-            <div class="custom-tab-panel hidden" id="customPanelIdentity">
-                <div class="customizer-section-header">
-                    <span class="custom-section-title">Workspace Icon &amp; Title</span>
-                </div>
-                <p class="customizer-help-text">Select a Notion-style page icon and personalize your dashboard name and motto.</p>
-
-                <div class="emoji-picker-container">
-                    <label class="form-label">Pick Page Emoji / Icon</label>
-                    <div style="margin-bottom: 8px;">
-                        <input type="text" class="popover-search-input" id="customizerEmojiSearchInput" placeholder="🔍 Search 350+ emojis (fire, book, run, star)..." oninput="filterCustomizerEmojis()" autocomplete="off">
-                    </div>
-                    <div class="popover-cat-pills" id="customizerEmojiCatPills" style="margin-bottom: 8px;">
-                        <!-- Category pills populated by JS -->
-                    </div>
-                    <div class="emoji-quick-grid" id="pageEmojiQuickGrid" style="max-height: 180px; overflow-y: auto;">
-                        <!-- Populated by JS -->
-                    </div>
-                    <div style="display:flex; gap:8px; margin-top:10px;">
-                        <input type="text" id="customPageIconInput" class="form-input" placeholder="Or type/paste any emoji / symbol…" maxlength="4" style="max-width:180px; text-align:center; font-size:1.125rem;">
-                        <button class="btn" onclick="applyCustomPageIcon()">Set Custom Icon</button>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-top: 16px;">
-                    <label class="form-label" for="customWorkspaceTitleInput">Dashboard Title</label>
-                    <input type="text" id="customWorkspaceTitleInput" class="form-input" placeholder="e.g. Habit OS, Personal Growth, Daily Discipline" maxlength="32">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="customWorkspaceQuoteInput">Motivational Quote / Subtitle</label>
-                    <textarea id="customWorkspaceQuoteInput" class="form-input" rows="2" placeholder="e.g. “We are what we repeatedly do. Excellence, then, is not an act, but a habit.”" maxlength="140"></textarea>
-                </div>
-
-                <div class="modal-actions" style="margin-top: 14px;">
-                    <button class="btn btn-primary" onclick="saveWorkspaceIdentity()">Save Identity</button>
-                </div>
-            </div>
-
-            <!-- Tab 3: Atmosphere & Wallpapers -->
-            <div class="custom-tab-panel hidden" id="customPanelAtmosphere">
-                <div class="customizer-section-header">
-                    <span class="custom-section-title">Canvas Atmosphere</span>
-                </div>
-                <p class="customizer-help-text">Give your workspace depth with architectural grids, tactile dot matrices, or custom wallpapers.</p>
-
-                <div class="wallpaper-options-grid" id="wallpaperOptionsGrid">
-                    <!-- Populated by JS -->
-                </div>
-
-                <div class="custom-input-group" style="margin-top: 14px;">
-                    <label class="form-label" for="customWallpaperUrlInput">Custom Wallpaper Image URL</label>
-                    <div style="display:flex; gap:8px;">
-                        <input type="url" id="customWallpaperUrlInput" class="form-input" placeholder="https://..." style="flex:1;">
-                        <button class="btn btn-primary" onclick="applyCustomWallpaperUrl()">Apply</button>
-                    </div>
-                </div>
-
-                <div style="display:flex; gap:10px; margin-top:10px; align-items:center; flex-wrap:wrap;">
-                    <input type="file" id="wallpaperFileInput" accept="image/*" style="display:none;" onchange="handleWallpaperFileUpload(event)">
-                    <button class="btn" onclick="document.getElementById('wallpaperFileInput').click()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        Upload Wallpaper Image
-                    </button>
-                </div>
-
-                <div class="customizer-feature-box" style="margin-top: 16px;">
-                    <label class="custom-toggle-label" style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; width:100%;">
-                        <div>
-                            <strong>Frosted Glassmorphism Effect</strong>
-                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Translucent blur on cards so your background subtly radiates through.</div>
-                        </div>
-                        <input type="checkbox" id="glassEffectCheckbox" onchange="handleGlassEffectToggle(this.checked)">
-                    </label>
-                </div>
-            </div>
-
-            <!-- Tab 4: Typography -->
-            <div class="custom-tab-panel hidden" id="customPanelTypography">
-                <div class="customizer-section-header">
-                    <span class="custom-section-title">Typography Style</span>
-                </div>
-                <p class="customizer-help-text">Choose how text feels across your entire tracker — matching Notion's font switcher.</p>
-
-                <div class="font-options-grid">
-                    <div class="font-option-card active" id="fontCardSans" onclick="applyWorkspaceFont('sans')">
-                        <div class="font-preview-letters" style="font-family:'Plus Jakarta Sans',sans-serif;">Ag</div>
-                        <div class="font-meta">
-                            <span class="font-name">Sans-Serif (Default)</span>
-                            <span class="font-sub">Plus Jakarta Sans · Clean, modern &amp; balanced</span>
-                        </div>
-                    </div>
-                    <div class="font-option-card" id="fontCardSerif" onclick="applyWorkspaceFont('serif')">
-                        <div class="font-preview-letters" style="font-family:'Merriweather',serif;">Ag</div>
-                        <div class="font-meta">
-                            <span class="font-name">Serif</span>
-                            <span class="font-sub">Merriweather · Editorial, literary &amp; Notion-esque</span>
-                        </div>
-                    </div>
-                    <div class="font-option-card" id="fontCardMono" onclick="applyWorkspaceFont('mono')">
-                        <div class="font-preview-letters" style="font-family:'JetBrains Mono',monospace;">Ag</div>
-                        <div class="font-meta">
-                            <span class="font-name">Monospace</span>
-                            <span class="font-sub">JetBrains Mono · Technical, focused &amp; minimal</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-actions" style="margin-top: 20px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
-                <button class="btn btn-primary" style="min-width: 100px;" onclick="closeCustomizeModal()">Done</button>
-            </div>
-        </div>
+    <div class="tour-footer">
+      <button type="button" id="tourSkipBtn" class="btn btn-ghost">Skip tour</button>
+      <div class="tour-nav">
+        <button type="button" id="tourPrevBtn" class="btn">← Back</button>
+        <button type="button" id="tourNextBtn" class="btn btn-primary">Next →</button>
+      </div>
     </div>
-
-    <!-- ══ Habit Custom Icon Picker Modal ════════════════════ -->
-    <div class="modal-overlay" id="habitIconPickerModalOverlay" role="dialog" aria-modal="true" aria-labelledby="habitIconModalTitle">
-        <div class="modal-box habit-icon-modal-box">
-            <h3 class="modal-title" id="habitIconModalTitle">Choose Habit Icon</h3>
-            <p class="modal-subtitle" id="habitIconModalSubtitle">Personalize this habit with a Notion-style emoji or symbol.</p>
-
-            <div style="margin-bottom: 8px;">
-                <input type="text" class="popover-search-input" id="habitIconSearchInput" placeholder="🔍 Search 350+ emojis (e.g. water, workout, code, sleep)..." oninput="filterHabitIcons()" autocomplete="off">
-            </div>
-            <div class="popover-cat-pills" id="habitIconCatPills" style="margin-bottom: 8px;">
-                <!-- Category pills populated by JS -->
-            </div>
-            <div class="habit-icon-quick-category">
-                <div class="habit-icon-grid" id="habitIconGrid" style="max-height: 180px; overflow-y: auto;">
-                    <!-- Populated by JS -->
-                </div>
-            </div>
-
-            <div class="custom-input-group" style="margin-top: 14px;">
-                <label class="form-label" for="customHabitEmojiInput">Custom Emoji / Symbol</label>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="customHabitEmojiInput" class="form-input" placeholder="Type or paste any emoji (e.g. 🎯, 🏊, 🍵)…" maxlength="4" style="max-width:220px; text-align:center; font-size:1.125rem;">
-                    <button class="btn" onclick="applyCustomHabitEmojiFromInput()">Select</button>
-                </div>
-            </div>
-
-            <div class="modal-actions" style="margin-top: 18px; justify-content: space-between;">
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-ghost" onclick="autoSuggestHabitIcon()" title="Auto detect icon based on habit name">🪄 Auto-Detect</button>
-                    <button class="btn btn-ghost" onclick="removeHabitIcon()" title="Use default icon">Clear</button>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn" onclick="closeHabitIconPicker()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveSelectedHabitIcon()">Save Icon</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="dashboard-container">
-
-        <!-- ══════════════════ NOTION COVER & PAGE IDENTITY ══════════════════ -->
-        <div class="notion-cover-wrapper" id="notionCoverWrapper">
-            <div class="notion-cover-banner" id="notionCoverBanner">
-                <div class="notion-cover-img" id="notionCoverImg" role="img" aria-label="Workspace cover banner"></div>
-                <div class="notion-cover-gradient-overlay"></div>
-            </div>
-
-            <!-- Notion Floating Page Identity Header -->
-            <div class="notion-identity-bar" id="notionIdentityBar">
-                <div class="notion-page-icon-wrapper">
-                    <button class="notion-page-icon-btn" id="notionPageIconBtn" onclick="togglePageIconPickerPopover(event)" title="Click to change page icon" aria-label="Page icon">
-                        <span id="notionPageIconDisplay">⚡</span>
-                    </button>
-                    <!-- Notion-style floating emoji picker popover -->
-                    <div class="page-icon-popover hidden" id="pageIconPickerPopover" onclick="event.stopPropagation()">
-                        <div class="popover-header">
-                            <input type="text" class="popover-search-input" id="popoverEmojiSearchInput" placeholder="🔍 Search 350+ emojis (fire, book, run, star)..." oninput="filterPageIconPopover()" autocomplete="off">
-                        </div>
-                        <div class="popover-cat-pills" id="popoverEmojiCatPills">
-                            <!-- Populated dynamically via JS -->
-                        </div>
-                        <div class="popover-emoji-grid" id="popoverEmojiGrid">
-                            <!-- Populated dynamically via JS -->
-                        </div>
-                        <div class="popover-footer">
-                            <div class="popover-custom-row">
-                                <input type="text" class="popover-custom-input" id="popoverCustomEmojiInput" placeholder="Paste / type any emoji (e.g. 🏆, 🚀, 🥋)" maxlength="4">
-                                <button class="btn btn-primary btn-sm" onclick="applyCustomPopoverEmoji()">Apply</button>
-                            </div>
-                            <div class="popover-actions-row">
-                                <button class="popover-btn-ghost" onclick="randomizePageEmoji()">🎲 Random</button>
-                                <button class="popover-btn-ghost" onclick="openCustomizeModal('identity'); closePageIconPickerPopover();">⚙ Full Customizer</button>
-                                <button class="popover-btn-ghost" onclick="closePageIconPickerPopover()">Done</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="notion-title-block">
-                    <div class="notion-title-row">
-                        <h1 class="notion-workspace-title" id="notionWorkspaceTitle" contenteditable="true" spellcheck="false" title="Click to edit workspace name">Habit OS</h1>
-                        <button class="notion-edit-title-btn" onclick="openCustomizeModal('identity')" title="Edit title and quote" aria-label="Edit workspace identity">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                        </button>
-                    </div>
-                    <p class="notion-workspace-quote" id="notionWorkspaceQuote" contenteditable="true" spellcheck="false" title="Click to edit quote">“We are what we repeatedly do. Excellence, then, is not an act, but a habit.”</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- ══════════════════ LEFT COLUMN ══════════════════════ -->
-        <main class="left-column">
-
-            <!-- Global Header -->
-            <header class="panel app-header">
-                <div class="brand-section">
-                    <div class="brand-icon" aria-hidden="true">
-                        <!-- Habit-tracker icon: check mark inside a rounded square -->
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="4"/>
-                            <path d="M9 12l2.5 2.5L15 9"/>
-                        </svg>
-                    </div>
-                    <div class="brand-title-wrap">
-                        <span id="greeting" class="greeting-pill">Today</span>
-                        <h1>Habit Tracker</h1>
-                    </div>
-                </div>
-
-                <div class="toolbar" role="toolbar" aria-label="Habit tracker controls">
-
-                    <!-- Left: View Mode Toggle & Date Navigator Group -->
-                    <div class="toolbar-group toolbar-group-left">
-                        <div class="view-mode-toggle" role="tablist" aria-label="Switch between Month Grid and Today Focus">
-                            <button id="viewGridBtn" class="view-btn active" role="tab" aria-selected="true" onclick="setViewMode('grid')">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                                <span>Grid</span>
-                            </button>
-                            <button id="viewTodayBtn" class="view-btn" role="tab" aria-selected="false" onclick="setViewMode('today')">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                <span>Today</span>
-                            </button>
-                        </div>
-
-                        <div class="date-select-group">
-                            <select id="monthSelect" class="control-select" aria-label="Select month"></select>
-                            <select id="yearSelect"  class="control-select" aria-label="Select year"></select>
-                        </div>
-                    </div>
-
-                    <!-- Right: Quick Tools, More (•••) Menu & Unified Account -->
-                    <div class="toolbar-group toolbar-group-right">
-                        <button class="btn btn-ghost" onclick="openCustomizeModal('general')" aria-label="Customize workspace appearance" title="Customize covers, icons, fonts & wallpaper">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-                            </svg>
-                            <span>Customize</span>
-                        </button>
-
-                        <button class="btn btn-receipt" onclick="openReceiptModal()" aria-label="Generate Monthly Discipline Receipt">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
-                                <path d="M16 8h-8"/>
-                                <path d="M16 12h-8"/>
-                                <path d="M13 16h-5"/>
-                            </svg>
-                            <span>Receipt</span>
-                        </button>
-
-                        <!-- More Options (•••) Dropdown Menu -->
-                        <div class="more-menu-wrapper" id="moreMenuWrapper">
-                            <button id="moreOptionsBtn" class="btn btn-ghost more-menu-btn" onclick="toggleMoreOptionsMenu(event)" aria-label="More actions and settings" aria-expanded="false" title="More options">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                    <circle cx="5" cy="12" r="2"/>
-                                    <circle cx="12" cy="12" r="2"/>
-                                    <circle cx="19" cy="12" r="2"/>
-                                </svg>
-                            </button>
-                            <div id="moreMenuDropdown" class="more-dropdown-panel hidden" role="menu" aria-label="More options menu">
-                                <div class="dropdown-section-title">TOOLS &amp; ASSISTANCE</div>
-                                <button class="dropdown-item" role="menuitem" onclick="startInteractiveTour(); closeMoreOptionsMenu();">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                    <span>Interactive Guide</span>
-                                </button>
-                                <button class="dropdown-item" role="menuitem" onclick="exportCSV(); closeMoreOptionsMenu();">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                    <span>Export CSV</span>
-                                </button>
-                                <div class="dropdown-theme-row">
-                                    <div class="dropdown-theme-label">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20z"/></svg>
-                                        <span>Theme</span>
-                                    </div>
-                                    <select id="themeSelect" class="control-select dropdown-theme-select" aria-label="Select visual theme">
-                                        <option value="obsidian">✦ Obsidian</option>
-                                        <option value="forest">🌲 Forest</option>
-                                        <option value="nordic">❄️ Nordic</option>
-                                        <option value="espresso">☕ Espresso</option>
-                                        <option value="dusk">🌙 Plum</option>
-                                        <option value="paper">📜 Paper (Light)</option>
-                                    </select>
-                                </div>
-                                <hr class="dropdown-divider">
-                                <button class="dropdown-item dropdown-item-danger" role="menuitem" onclick="clearMonth(); closeMoreOptionsMenu();">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                                    <span>Clear Month</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Cloud Sync button (hidden when signed in) -->
-                        <button class="btn btn-cloud" id="authOpenBtn" aria-label="Sign in to enable cloud sync">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
-                            </svg>
-                            <span>Cloud Sync</span>
-                        </button>
-
-                        <!-- Unified User Account & Sync Pill (visible when signed in) -->
-                        <div id="userBadge" class="user-badge unified-account-pill hidden" title="Account & Sync status">
-                            <div class="user-avatar" id="userInitials" aria-hidden="true">--</div>
-                            <span id="userEmailText" class="user-email-text">user@email.com</span>
-                            <div id="syncStatusIndicator" class="sync-indicator-mini" role="button" tabindex="0" title="Click to sync now with cloud">
-                                <span id="syncDot" class="sync-dot synced"></span>
-                                <span id="syncStatusText" class="sync-text">Synced ✓</span>
-                            </div>
-                            <button class="icon-btn auth-signout-btn" id="authSignOutBtn" title="Sign out" aria-label="Sign out">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                                    <polyline points="16 17 21 12 16 7"/>
-                                    <line x1="21" y1="12" x2="9" y2="12"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Daily Progress Chart -->
-            <section class="panel" id="chartPanel">
-                <div class="panel-header">
-                    <h2 class="panel-title">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <line x1="18" y1="20" x2="18" y2="10"/>
-                            <line x1="12" y1="20" x2="12" y2="4"/>
-                            <line x1="6"  y1="20" x2="6"  y2="14"/>
-                        </svg>
-                        Daily Progress &amp; Wellness Overlay
-                    </h2>
-                </div>
-                <div class="canvas-container">
-                    <canvas id="dailyMixedChart"></canvas>
-                </div>
-            </section>
-
-            <!-- Habit Tracker Grid -->
-            <section class="panel" id="gridPanel">
-                <div class="panel-header">
-                    <h2 class="panel-title" id="gridTitle">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8"  y1="2" x2="8"  y2="6"/>
-                            <line x1="3"  y1="10" x2="21" y2="10"/>
-                        </svg>
-                        Monthly Log
-                    </h2>
-                </div>
-
-                <div class="grid-wrapper">
-                    <table class="tracker-grid" role="grid" aria-label="Monthly habit tracker grid">
-                        <thead id="tableHeader"></thead>
-                        <tbody id="tableBody"></tbody>
-                        <tbody id="moodSleepBody"></tbody>
-                    </table>
-                </div>
-
-                <div class="add-habit-container">
-                    <input type="text" id="newHabitInput"
-                           placeholder="Add a new habit… (e.g. Read 20 mins, Hydrate, Journaling)"
-                           aria-label="New habit title">
-                    <button onclick="addNewHabit()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <line x1="12" y1="5" x2="12" y2="19"/>
-                            <line x1="5"  y1="12" x2="19" y2="12"/>
-                        </svg>
-                        Add
-                    </button>
-                </div>
-                <div id="errorMessage" class="error-msg" role="alert"></div>
-            </section>
-
-            <!-- Monthly Grid Journal Panel (Visible in Month Grid View) -->
-            <section class="panel" id="gridJournalPanel">
-                <div class="panel-header" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                    <div class="today-journal-title-wrap">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                        <span class="editable-journal-title" id="gridJournalCardTitle" onclick="openRenameJournalModal()" title="Click to rename what kind of journal this is">Daily Reflection &amp; Win</span>
-                        <button type="button" class="icon-btn edit-journal-title-btn" onclick="openRenameJournalModal()" title="Rename journal type" aria-label="Rename journal type">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                        </button>
-                    </div>
-
-                    <!-- Day Selector for Grid Journal -->
-                    <div class="grid-journal-day-nav" role="navigation" aria-label="Day reflection navigator">
-                        <button class="icon-btn" onclick="navigateGridJournalDay(-1)" title="Previous Day" aria-label="Previous Day">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                        </button>
-                        <select id="gridJournalDaySelect" class="control-select" style="font-size:0.75rem; padding: 4px 8px; min-width: 140px;" aria-label="Select day to reflect on">
-                        </select>
-                        <button class="icon-btn" onclick="navigateGridJournalDay(1)" title="Next Day" aria-label="Next Day">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-                        </button>
-                        <button class="btn btn-ghost" style="padding: 3px 8px; font-size: 0.6875rem;" onclick="jumpGridJournalToToday()">Today</button>
-                    </div>
-                </div>
-
-                <!-- Active Day Banner & Auto-saved text -->
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                    <span class="grid-journal-day-heading" id="gridJournalDayHeading">Today's Reflection</span>
-                    <span class="journal-status-text" id="gridJournalSavedHint">Auto-saved</span>
-                </div>
-
-                <!-- Custom Prompt Pills -->
-                <div class="journal-prompt-pills" id="gridJournalPills" role="toolbar" aria-label="Reflection prompt pills"></div>
-
-                <!-- Textarea -->
-                <textarea id="gridJournalInput" class="today-journal-textarea" rows="4"
-                    placeholder="Write your reflection, thoughts, or wins for this day… (Auto-saves locally &amp; to cloud)"
-                    aria-label="Daily reflection notes"></textarea>
-
-                <!-- Monthly Reflections Log / Chips (Quick Jump) -->
-                <div class="grid-journal-history-wrap">
-                    <span class="grid-journal-history-label">LOGGED THIS MONTH:</span>
-                    <div class="grid-journal-history-chips" id="gridJournalHistoryChips">
-                        <!-- Chips showing days with logged reflections -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- Zen / Today Focus View -->
-            <section class="panel today-focus-section hidden" id="todayPanel">
-                <div class="today-banner">
-                    <div class="today-banner-top">
-                        <div class="today-date-heading" id="todayDateHeading">Today's Focus</div>
-                        <div class="today-score-pill" id="todayScorePill">0 / 0 completed</div>
-                    </div>
-                    <div class="today-progress-bar">
-                        <div class="today-progress-fill" id="todayProgressFill" style="width:0%"></div>
-                    </div>
-                </div>
-
-                <div class="today-habits-list" id="todayHabitsList"></div>
-
-                <!-- Today Quick Wellness Check-in -->
-                <div class="today-wellness-card">
-                    <div class="today-wellness-title">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        <span>Today's Wellness Check-in</span>
-                    </div>
-                    <div class="today-wellness-row">
-                        <div class="today-wellness-field">
-                            <label for="todayMoodSelect">Mood (1–10)</label>
-                            <select id="todayMoodSelect" class="control-select">
-                                <option value="">Log Mood</option>
-                                <option value="1">1 · Lowest</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5 · Neutral</option>
-                                <option value="6">6</option>
-                                <option value="7">7</option>
-                                <option value="8">8 · Good</option>
-                                <option value="9">9</option>
-                                <option value="10">10 · Peak</option>
-                            </select>
-                        </div>
-                        <div class="today-wellness-field">
-                            <label for="todaySleepSelect">Hours of Sleep</label>
-                            <select id="todaySleepSelect" class="control-select">
-                                <option value="">Log Sleep</option>
-                                <option value="4">4 hrs</option>
-                                <option value="5">5 hrs</option>
-                                <option value="6">6 hrs</option>
-                                <option value="7">7 hrs</option>
-                                <option value="8">8 hrs</option>
-                                <option value="9">9 hrs</option>
-                                <option value="10">10+ hrs</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Today Micro-Journal & Daily Reflection -->
-                <div class="today-journal-card" id="todayJournalCard">
-                    <div class="today-journal-header">
-                        <div class="today-journal-title-wrap">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                            <span class="editable-journal-title" id="journalCardTitle" onclick="openRenameJournalModal()" title="Click to rename what kind of journal this is">Daily Reflection &amp; Win</span>
-                            <button type="button" class="icon-btn edit-journal-title-btn" onclick="openRenameJournalModal()" title="Rename journal type" aria-label="Rename journal type">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                            </button>
-                        </div>
-                        <span class="journal-status-text" id="journalSavedHint">Auto-saved</span>
-                    </div>
-                    <div class="journal-prompt-pills" id="todayJournalPills" role="toolbar" aria-label="Reflection prompt pills"></div>
-                    <textarea id="todayJournalInput" class="today-journal-textarea" rows="3"
-                        placeholder="Write your entry here… (Auto-saves locally &amp; to cloud)"
-                        aria-label="Daily reflection notes"></textarea>
-                </div>
-
-                <!-- Add habit inside Today view too -->
-                <div class="add-habit-container">
-                    <input type="text" id="newHabitInputToday"
-                           placeholder="Add a new habit… (e.g. Read 20 mins, Hydrate, Journaling)"
-                           aria-label="New habit title">
-                    <button onclick="addNewHabitFromToday()">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <line x1="12" y1="5" x2="12" y2="19"/>
-                            <line x1="5"  y1="12" x2="19" y2="12"/>
-                        </svg>
-                        Add
-                    </button>
-                </div>
-                <div id="errorMessageToday" class="error-msg" role="alert"></div>
-            </section>
-
-        </main>
-
-        <!-- ══════════════════ RIGHT COLUMN ══════════════════════ -->
-        <aside class="right-column">
-
-            <!-- Monthly Completion Donut -->
-            <section class="panel">
-                <div class="panel-header">
-                    <h2 class="panel-title">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 2a10 10 0 0 1 10 10h-10z"/>
-                        </svg>
-                        Monthly Completion
-                    </h2>
-                </div>
-                <div class="canvas-container" style="height:130px;">
-                    <canvas id="overallDoughnutChart"></canvas>
-                </div>
-                <div class="stat-blocks">
-                    <div class="stat-box">
-                        <div class="stat-box-title">Target</div>
-                        <div class="stat-box-value tabular" id="statGoal">0</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-box-title">Completed</div>
-                        <div class="stat-box-value tabular" id="statCompleted">0</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-box-title">Remaining</div>
-                        <div class="stat-box-value tabular" id="statLeft">0</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Streak Telemetry -->
-            <section class="panel">
-                <div class="panel-header">
-                    <h2 class="panel-title">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
-                        </svg>
-                        Streak Telemetry
-                    </h2>
-                </div>
-                <table class="analysis-table">
-                    <thead>
-                        <tr>
-                            <th class="text-left">Habit</th>
-                            <th>Total</th>
-                            <th>Rate</th>
-                            <th title="Current active streak">
-                                <span class="streak-badge" aria-label="Current streak">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-                                    Now
-                                </span>
-                            </th>
-                            <th title="All-time best streak">
-                                <span class="streak-badge" aria-label="Best streak" style="color:var(--text-secondary)">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
-                                    Best
-                                </span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="analysisBody"></tbody>
-                </table>
-            </section>
-
-            <!-- Top Discipline -->
-            <section class="panel">
-                <div class="panel-header">
-                    <h2 class="panel-title">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                            <polyline points="17 6 23 6 23 12"/>
-                        </svg>
-                        Top Discipline
-                    </h2>
-                </div>
-                <ul class="top-habits-list" id="topHabitsList"></ul>
-            </section>
-
-            <!-- Discipline Intelligence (Correlation Insights) -->
-            <section class="panel">
-                <div class="panel-header">
-                    <h2 class="panel-title">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M2 12h5l3 7 4-14 3 7h5"/>
-                        </svg>
-                        Discipline Intelligence
-                    </h2>
-                </div>
-                <div id="insightsContainer" class="insights-container"></div>
-            </section>
-
-        </aside>
-    </div>
-
-    <!-- Script load order matters: config → supabase → app -->
-    <script src="supabase-config.js"></script>
-    <script src="supabase.js"></script>
-    <script src="app.js"></script>
+  </dialog>
 </body>
 </html>

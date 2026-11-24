@@ -1,0 +1,276 @@
+/* ============================================================
+   DAYMARK — DESIGN TOKENS
+   Brand: Warm Tactile Studio Almanac ("Small marks, lasting rhythm.")
+   ============================================================ */
+@layer reset, tokens, base, layout, components, utilities;
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    /* ── Linen Paper (Default Light Palette) ── */
+    --bg-canvas: #F6F2EA;
+    --bg-surface: #FFFDFA;
+    --bg-surface-elevated: #EFE9DD;
+    --bg-surface-active: #E5DDD0;
+    --bg-subtle: rgba(30, 27, 24, 0.04);
+    --bg-hover: rgba(30, 27, 24, 0.06);
+
+    --border-subtle: rgba(30, 27, 24, 0.10);
+    --border-strong: rgba(30, 27, 24, 0.20);
+    --checkbox-border: rgba(30, 27, 24, 0.36);
+
+    --text-primary: #1E1B18;
+    --text-secondary: #575047;
+    --text-muted: #6E665C;
+    --text-inverse: #FFFDFA;
+
+    /* Semantic Status */
+    --success: #26664E;
+    --success-subtle: rgba(38, 102, 78, 0.11);
+    --success-border: rgba(38, 102, 78, 0.30);
+
+    --rest: #546A7B;
+    --rest-subtle: rgba(84, 106, 123, 0.12);
+    --rest-border: rgba(84, 106, 123, 0.38);
+
+    --danger: #B83227;
+    --danger-subtle: rgba(184, 50, 39, 0.10);
+    --danger-border: rgba(184, 50, 39, 0.32);
+
+    --mood-line: #26664E;
+    --sleep-line: #5D6A8A;
+
+    /* Signature Ink: Terracotta Stamp */
+    --accent: #B94825;
+    --accent-hover: #9D3B1D;
+    --accent-text: #FFFDFA;
+    --accent-subtle: rgba(185, 72, 37, 0.10);
+    --accent-border: rgba(185, 72, 37, 0.34);
+
+    /* Grid markers */
+    --today-bg: rgba(185, 72, 37, 0.07);
+    --today-border: rgba(185, 72, 37, 0.35);
+    --weekend-bg: rgba(30, 27, 24, 0.025);
+    --unscheduled-bg: rgba(30, 27, 24, 0.02);
+
+    /* Shadows (tactile stationery elevation) */
+    --shadow-sm: 0 1px 2px rgba(30, 27, 24, 0.06), 0 1px 3px rgba(30, 27, 24, 0.04);
+    --shadow-md: 0 8px 24px rgba(30, 27, 24, 0.08), 0 2px 6px rgba(30, 27, 24, 0.05);
+    --shadow-lg: 0 20px 50px rgba(30, 27, 24, 0.18), 0 4px 14px rgba(30, 27, 24, 0.08);
+    --backdrop-scrim: rgba(24, 21, 18, 0.56);
+
+    /* Scrollbars */
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(30, 27, 24, 0.24);
+
+    /* Typography */
+    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* Geometry & Spacing */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-pill: 9999px;
+
+    /* Adaptive Target Sizing (WCAG 2.5.8 & 2.5.5) */
+    --target-size: 28px;
+    --topbar-height: 60px;
+
+    /* Tactile Motion */
+    --ease-stamp: cubic-bezier(0.22, 1.25, 0.36, 1);
+    --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --duration-fast: 120ms;
+    --duration-base: 190ms;
+
+    accent-color: var(--accent);
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  /* ── Studio Ink Overrides (Light) ── */
+  :root[data-ink="sage"] {
+    --accent: #26664E;
+    --accent-hover: #1D523E;
+    --accent-text: #FFFDFA;
+    --accent-subtle: rgba(38, 102, 78, 0.11);
+    --accent-border: rgba(38, 102, 78, 0.34);
+    --today-bg: rgba(38, 102, 78, 0.07);
+    --today-border: rgba(38, 102, 78, 0.35);
+    --mood-line: #B94825;
+  }
+
+  :root[data-ink="indigo"] {
+    --accent: #335496;
+    --accent-hover: #27427A;
+    --accent-text: #FFFDFA;
+    --accent-subtle: rgba(51, 84, 150, 0.10);
+    --accent-border: rgba(51, 84, 150, 0.34);
+    --today-bg: rgba(51, 84, 150, 0.07);
+    --today-border: rgba(51, 84, 150, 0.35);
+    --sleep-line: #9B5C32;
+  }
+
+  /* ── Explicit Light Lock ── */
+  :root[data-appearance="light"] {
+    color-scheme: light;
+  }
+
+  /* ── Evening Ink (Dark Palette — Auto System) ── */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-appearance="light"]) {
+      --bg-canvas: #131210;
+      --bg-surface: #1B1916;
+      --bg-surface-elevated: #25221E;
+      --bg-surface-active: #302C26;
+      --bg-subtle: rgba(243, 238, 230, 0.045);
+      --bg-hover: rgba(243, 238, 230, 0.075);
+
+      --border-subtle: rgba(243, 238, 230, 0.10);
+      --border-strong: rgba(243, 238, 230, 0.20);
+      --checkbox-border: rgba(243, 238, 230, 0.38);
+
+      --text-primary: #F3EEE6;
+      --text-secondary: #B8AEA2;
+      --text-muted: #948A7E;
+      --text-inverse: #171512;
+
+      --success: #56B48B;
+      --success-subtle: rgba(86, 180, 139, 0.14);
+      --success-border: rgba(86, 180, 139, 0.35);
+
+      --rest: #8BA8BD;
+      --rest-subtle: rgba(139, 168, 189, 0.14);
+      --rest-border: rgba(139, 168, 189, 0.40);
+
+      --danger: #F07167;
+      --danger-subtle: rgba(240, 113, 103, 0.13);
+      --danger-border: rgba(240, 113, 103, 0.35);
+
+      --mood-line: #56B48B;
+      --sleep-line: #9DB4D9;
+
+      --accent: #E58A54;
+      --accent-hover: #F09D6B;
+      --accent-text: #1A1511;
+      --accent-subtle: rgba(229, 138, 84, 0.14);
+      --accent-border: rgba(229, 138, 84, 0.38);
+
+      --today-bg: rgba(229, 138, 84, 0.09);
+      --today-border: rgba(229, 138, 84, 0.40);
+      --weekend-bg: rgba(243, 238, 230, 0.025);
+      --unscheduled-bg: rgba(243, 238, 230, 0.015);
+
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.28);
+      --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.40);
+      --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.62);
+      --backdrop-scrim: rgba(8, 7, 6, 0.72);
+      --scrollbar-thumb: rgba(243, 238, 230, 0.24);
+    }
+
+    :root:not([data-appearance="light"])[data-ink="sage"] {
+      --accent: #5BC296;
+      --accent-hover: #73D2A9;
+      --accent-text: #101A15;
+      --accent-subtle: rgba(91, 194, 150, 0.14);
+      --accent-border: rgba(91, 194, 150, 0.38);
+      --today-bg: rgba(91, 194, 150, 0.09);
+      --today-border: rgba(91, 194, 150, 0.40);
+      --mood-line: #E58A54;
+    }
+
+    :root:not([data-appearance="light"])[data-ink="indigo"] {
+      --accent: #82A8F5;
+      --accent-hover: #9BBBF8;
+      --accent-text: #101624;
+      --accent-subtle: rgba(130, 168, 245, 0.14);
+      --accent-border: rgba(130, 168, 245, 0.38);
+      --today-bg: rgba(130, 168, 245, 0.09);
+      --today-border: rgba(130, 168, 245, 0.40);
+      --sleep-line: #E5A967;
+    }
+  }
+
+  /* ── Explicit Dark Lock ── */
+  :root[data-appearance="dark"] {
+    color-scheme: dark;
+
+    --bg-canvas: #131210;
+    --bg-surface: #1B1916;
+    --bg-surface-elevated: #25221E;
+    --bg-surface-active: #302C26;
+    --bg-subtle: rgba(243, 238, 230, 0.045);
+    --bg-hover: rgba(243, 238, 230, 0.075);
+
+    --border-subtle: rgba(243, 238, 230, 0.10);
+    --border-strong: rgba(243, 238, 230, 0.20);
+    --checkbox-border: rgba(243, 238, 230, 0.38);
+
+    --text-primary: #F3EEE6;
+    --text-secondary: #B8AEA2;
+    --text-muted: #948A7E;
+    --text-inverse: #171512;
+
+    --success: #56B48B;
+    --success-subtle: rgba(86, 180, 139, 0.14);
+    --success-border: rgba(86, 180, 139, 0.35);
+
+    --rest: #8BA8BD;
+    --rest-subtle: rgba(139, 168, 189, 0.14);
+    --rest-border: rgba(139, 168, 189, 0.40);
+
+    --danger: #F07167;
+    --danger-subtle: rgba(240, 113, 103, 0.13);
+    --danger-border: rgba(240, 113, 103, 0.35);
+
+    --mood-line: #56B48B;
+    --sleep-line: #9DB4D9;
+
+    --accent: #E58A54;
+    --accent-hover: #F09D6B;
+    --accent-text: #1A1511;
+    --accent-subtle: rgba(229, 138, 84, 0.14);
+    --accent-border: rgba(229, 138, 84, 0.38);
+
+    --today-bg: rgba(229, 138, 84, 0.09);
+    --today-border: rgba(229, 138, 84, 0.40);
+    --weekend-bg: rgba(243, 238, 230, 0.025);
+    --unscheduled-bg: rgba(243, 238, 230, 0.015);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.28);
+    --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.40);
+    --shadow-lg: 0 24px 56px rgba(0, 0, 0, 0.62);
+    --backdrop-scrim: rgba(8, 7, 6, 0.72);
+    --scrollbar-thumb: rgba(243, 238, 230, 0.24);
+  }
+
+  :root[data-appearance="dark"][data-ink="sage"] {
+    --accent: #5BC296;
+    --accent-hover: #73D2A9;
+    --accent-text: #101A15;
+    --accent-subtle: rgba(91, 194, 150, 0.14);
+    --accent-border: rgba(91, 194, 150, 0.38);
+    --today-bg: rgba(91, 194, 150, 0.09);
+    --today-border: rgba(91, 194, 150, 0.40);
+    --mood-line: #E58A54;
+  }
+
+  :root[data-appearance="dark"][data-ink="indigo"] {
+    --accent: #82A8F5;
+    --accent-hover: #9BBBF8;
+    --accent-text: #101624;
+    --accent-subtle: rgba(130, 168, 245, 0.14);
+    --accent-border: rgba(130, 168, 245, 0.38);
+    --today-bg: rgba(130, 168, 245, 0.09);
+    --today-border: rgba(130, 168, 245, 0.40);
+    --sleep-line: #E5A967;
+  }
+
+  @media (pointer: coarse) {
+    :root {
+      --target-size: 44px;
+    }
+  }
+}

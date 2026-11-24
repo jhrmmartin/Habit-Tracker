@@ -1,0 +1,32 @@
+{
+  "name": "Daymark — Small marks, lasting rhythm",
+  "short_name": "Daymark",
+  "description": "A warm, calm, local-first daily habit tracker, wellness check-in, and micro-journal with optional cross-device sync.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F6F2EA",
+  "theme_color": "#C4532E",
+  "categories": ["lifestyle", "productivity", "health"],
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
