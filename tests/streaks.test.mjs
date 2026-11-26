@@ -117,3 +117,34 @@ test('month analytics excludes rest days & unscheduled days from target denomina
   assert.equal(res.totalRestDays, 1);
   assert.ok(res.insights.some((i) => i.headline.includes('Rested mornings')));
 });
+
+test('weeklyTarget habits bridge unlogged days within satisfied weeks and respect custom sleepGoal', () => {
+  // Gym 3x/week across Mon Nov 2 .. Sun Nov 8 (weekStartsOn = 1)
+  const gym = { id: 'gym', name: 'Gym', weeklyTarget: 3, schedule: [0, 1, 2, 3, 4, 5, 6] };
+  const logs = {
+    '2026-11-02': 'done',
+    '2026-11-04': 'done',
+    '2026-11-06': 'done',
+    '2026-11-09': 'done'
+  };
+  const { currentStreak, bestStreak } = computeHabitStreaks(gym, logs, '2026-11-09', 1);
+  assert.equal(currentStreak, 4);
+  assert.equal(bestStreak, 4);
+
+  // Personalized sleepGoal = 8: 7.5h is classified as shorter night vs 8.5h well rested
+  const res = computeMonthAnalytics({
+    habits: [gym],
+    monthData: {
+      habits: { 'gym-2': 'done', 'gym-4': 'done', 'gym-6': 'done' },
+      moodSleep: { 'Hours of Sleep-2': '8.5', 'Hours of Sleep-3': '7.5' },
+      journal: {}
+    },
+    allLogsByHabit: { gym: logs },
+    year: 2026,
+    month: 10,
+    weekStartsOn: 1,
+    sleepGoal: 8,
+    now: new Date(2026, 10, 6)
+  });
+  assert.ok(res.insights.some((i) => i.detail.includes('8+ hours of sleep')));
+});

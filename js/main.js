@@ -6,6 +6,7 @@
 import { store } from './store.js';
 import { todayDateKey } from './streaks.js';
 import { ensurePopoverSupport, toast } from './ui/toast.js';
+import { safeJSONParse } from './security.js';
 import {
   initDialogLightDismissFallback,
   confirmAction,
@@ -14,15 +15,16 @@ import {
   openPreferencesDialog,
   wirePreferencesDialog,
   openArchiveDialog,
-  wireArchiveDialog
+  wireArchiveDialog,
+  openImportChoiceDialog
 } from './ui/dialogs.js';
 import { renderTodayView, wireTodayView } from './ui/today.js';
 import { renderMonthlyGrid, wireGridAddForm } from './ui/grid.js';
 import { renderAnalyticsAndCharts } from './ui/charts.js';
-import { renderJournalUI, wireJournalControls, flushPendingJournalSaves } from './ui/journal.js';
-import { wireKeepsakeDialog } from './ui/keepsake.js';
+import { renderJournalUI, wireJournalControls, flushPendingJournalSaves, hasPendingJournalSaves } from './ui/journal.js';
+import { openKeepsakeDialog, wireKeepsakeDialog } from './ui/keepsake.js';
 import { startGuidedTour, openGuideDialog, wireGuidedTour } from './ui/tour.js';
-import { initSync } from './sync.js';
+import { initSync, hasPendingSyncWork } from './sync.js';
 
 let currentView = 'today';
 let lastKnownDateKey = todayDateKey();
@@ -221,6 +223,16 @@ function wireToolbarAndMenus() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
+  document.getElementById('menuKeepsakeBtn')?.addEventListener('click', () => {
+    closeOverflowPopover();
+    openKeepsakeDialog();
+  });
+
+  document.getElementById('menuPrivacyBtn')?.addEventListener('click', () => {
+    closeOverflowPopover();
+    store.updatePrefs({ privacyBlur: !store.prefs.privacyBlur }, false);
+  });
+
   document.getElementById('menuPrefsBtn')?.addEventListener('click', () => {
     closeOverflowPopover();
     store.markOnboardingStep('explored');
@@ -268,14 +280,27 @@ function wireToolbarAndMenus() {
     if (!file) return;
     try {
       const text = await file.text();
-      const res = store.importBackupJSON(text);
+      const preview = safeJSONParse(text, null);
+      if (!preview || typeof preview !== 'object' || !Array.isArray(preview.habits)) {
+        toast.error('Invalid backup file. Please select a valid Daymark JSON export.');
+        return;
+      }
+      const mode = await openImportChoiceDialog(preview.habits.length);
+      if (mode === 'cancel') return;
+
+      const res = store.importBackupJSON(text, { mode });
       if (res.error) {
         toast.error(res.error);
       } else {
-        toast.success(`Restored backup (${res.habitCount} habits)`, {
-          actionLabel: 'Undo',
-          onAction: () => res.snapshot && store.undo(res.snapshot.id)
-        });
+        toast.success(
+          mode === 'merge'
+            ? `Merged backup (${res.habitCount} total habits)`
+            : `Restored backup (${res.habitCount} habits)`,
+          {
+            actionLabel: 'Undo',
+            onAction: () => res.snapshot && store.undo(res.snapshot.id)
+          }
+        );
       }
     } catch {
       toast.error('Could not read the selected backup file.');
@@ -416,6 +441,16 @@ function bootstrap() {
   initSync();
   watchMidnightRollover();
   registerServiceWorker();
+
+  // Safety guard: flush local note drafts and warn only if an un-synced cloud push is still in flight
+  window.addEventListener('beforeunload', (e) => {
+    const hadNoteDraft = hasPendingJournalSaves();
+    flushPendingJournalSaves();
+    if (hadNoteDraft || hasPendingSyncWork()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
 }
 
 if (document.readyState === 'loading') {

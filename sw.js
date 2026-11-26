@@ -1,5 +1,5 @@
 // Daymark Service Worker — Offline-First App Shell Cache
-const CACHE_NAME = 'daymark-shell-v4';
+const CACHE_NAME = 'daymark-shell-v5';
 const APP_SHELL = [
   './',
   './index.html',

@@ -36,9 +36,38 @@ export function todayDateKey(now = new Date()) {
 }
 
 /**
+ * Computes calendar week key ('YYYY-MM-DD' of the week's start day) for a date key.
+ */
+export function getWeekStartKey(dateKeyStr, weekStartsOn = 0) {
+  const { year, month, day } = parseDateKey(dateKeyStr);
+  const dt = new Date(year, month, day);
+  const diff = (dt.getDay() - weekStartsOn + 7) % 7;
+  dt.setDate(dt.getDate() - diff);
+  return formatDateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+}
+
+/**
+ * Counts how many 'done' marks a habit has in the calendar week containing dateKeyStr.
+ */
+export function getWeekProgressForDate(habit, habitLogsByDate = {}, dateKeyStr = todayDateKey(), weekStartsOn = 0) {
+  const startKey = getWeekStartKey(dateKeyStr, weekStartsOn);
+  let done = 0;
+  for (let offset = 0; offset < 7; offset++) {
+    const k = shiftDateKey(startKey, offset);
+    if (habitLogsByDate[k] === 'done') done++;
+  }
+  const target = habit?.weeklyTarget || 7;
+  return { done, target, met: done >= target };
+}
+
+/**
  * Checks if a habit is scheduled for a given JS day of week (0=Sun..6=Sat).
+ * Weekly-target habits can be logged any day of the week.
  */
 export function isHabitScheduledOnDow(habit, dow) {
+  if (habit && Number.isInteger(habit.weeklyTarget) && habit.weeklyTarget > 0) {
+    return true;
+  }
   if (!habit || !Array.isArray(habit.schedule) || habit.schedule.length === 0) {
     return true;
   }
@@ -74,10 +103,23 @@ export function getCalendarWeeks(year, month, weekStartsOn = 0) {
  * - Mid-day grace: if today is scheduled and not yet completed, checks starting from yesterday
  *   so streaks don't drop to 0 in the morning before check-in.
  */
-export function computeHabitStreaks(habit, habitLogsByDate = {}, referenceTodayKey = todayDateKey()) {
+export function computeHabitStreaks(habit, habitLogsByDate = {}, referenceTodayKey = todayDateKey(), weekStartsOn = 0) {
   const loggedKeys = Object.keys(habitLogsByDate).filter(
     (k) => habitLogsByDate[k] === 'done' || habitLogsByDate[k] === 'rest'
   );
+
+  // Weekly-target mode (e.g. 3x/week): streak counts completed weeks or bridges unlogged days in met/active weeks
+  const weeklyTarget = Number.isInteger(habit?.weeklyTarget) && habit.weeklyTarget > 0 ? habit.weeklyTarget : null;
+  const weekCounts = new Map();
+  if (weeklyTarget) {
+    for (const k of loggedKeys) {
+      if (habitLogsByDate[k] === 'done' || habitLogsByDate[k] === 'rest') {
+        const wk = getWeekStartKey(k, weekStartsOn);
+        weekCounts.set(wk, (weekCounts.get(wk) || 0) + 1);
+      }
+    }
+  }
+  const currentWeekKey = weeklyTarget ? getWeekStartKey(referenceTodayKey, weekStartsOn) : null;
 
   // 1. Current Active Streak (walking backward from referenceTodayKey)
   let currentStreak = 0;
@@ -98,11 +140,15 @@ export function computeHabitStreaks(habit, habitLogsByDate = {}, referenceTodayK
       const state = habitLogsByDate[cursor];
       const dow = getDayOfWeekFromKey(cursor);
       const scheduled = isHabitScheduledOnDow(habit, dow);
+      const wkKey = weeklyTarget ? getWeekStartKey(cursor, weekStartsOn) : null;
+      const weeklyBridged = Boolean(
+        weeklyTarget && (wkKey === currentWeekKey || (weekCounts.get(wkKey) || 0) >= weeklyTarget)
+      );
 
       if (state === 'done') {
         currentStreak++;
-      } else if (state === 'rest' || !scheduled) {
-        // Compassionate bridge: rest days and unscheduled days don't break streaks
+      } else if (state === 'rest' || !scheduled || weeklyBridged) {
+        // Compassionate bridge: rest days, unscheduled days, and satisfied weekly-target weeks don't break streaks
       } else {
         break;
       }
@@ -124,12 +170,14 @@ export function computeHabitStreaks(habit, habitLogsByDate = {}, referenceTodayK
       const state = habitLogsByDate[walk];
       const dow = getDayOfWeekFromKey(walk);
       const scheduled = isHabitScheduledOnDow(habit, dow);
+      const wkKey = weeklyTarget ? getWeekStartKey(walk, weekStartsOn) : null;
+      const weeklyBridged = Boolean(weeklyTarget && (weekCounts.get(wkKey) || 0) >= weeklyTarget);
 
       if (state === 'done') {
         running++;
         if (running > bestStreak) bestStreak = running;
-      } else if (state === 'rest' || !scheduled) {
-        // Preserve running streak across rest / unscheduled days
+      } else if (state === 'rest' || !scheduled || weeklyBridged) {
+        // Preserve running streak across rest / unscheduled / satisfied weekly-target days
       } else {
         running = 0;
       }
@@ -151,6 +199,8 @@ export function computeMonthAnalytics({
   allLogsByHabit = {},
   year,
   month,
+  weekStartsOn = 0,
+  sleepGoal = 7,
   now = new Date()
 }) {
   const activeHabits = habits.filter((h) => !h.archived);
@@ -159,6 +209,7 @@ export function computeMonthAnalytics({
   const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month;
   const isFutureMonth = year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth());
   const elapsedDays = isFutureMonth ? 0 : (isCurrentMonth ? now.getDate() : totalDays);
+  const calWeeks = getCalendarWeeks(year, month, weekStartsOn);
 
   let totalScheduledTarget = 0;
   let totalCompleted = 0;
@@ -172,37 +223,64 @@ export function computeMonthAnalytics({
     let actual = 0;
     let restCount = 0;
     let habitMonthTarget = 0;
+    const weeklyTarget = Number.isInteger(habit.weeklyTarget) && habit.weeklyTarget > 0 ? habit.weeklyTarget : null;
 
-    for (let d = 1; d <= totalDays; d++) {
-      const dow = new Date(year, month, d).getDay();
-      const scheduled = isHabitScheduledOnDow(habit, dow);
-      const rawState = monthData.habits?.[`${habit.id}-${d}`];
-      const state = rawState === true ? 'done' : rawState;
-
-      if (state === 'done') {
-        actual++;
-        totalCompleted++;
-        checksPerDay[d - 1]++;
-      } else if (state === 'rest') {
-        restCount++;
-        totalRestDays++;
+    if (weeklyTarget) {
+      for (const wk of calWeeks) {
+        let nonRestDays = 0;
+        for (let d = wk.startDay; d <= wk.endDay; d++) {
+          const rawState = monthData.habits?.[`${habit.id}-${d}`];
+          const state = rawState === true ? 'done' : rawState;
+          if (state === 'done') {
+            actual++;
+            totalCompleted++;
+            checksPerDay[d - 1]++;
+            nonRestDays++;
+          } else if (state === 'rest') {
+            restCount++;
+            totalRestDays++;
+          } else {
+            nonRestDays++;
+          }
+          if (state !== 'rest') scheduledPerDay[d - 1]++;
+        }
+        const wkTarget = Math.min(nonRestDays, Math.max(1, Math.round((weeklyTarget * wk.span) / 7)));
+        habitMonthTarget += wkTarget;
+        totalScheduledTarget += wkTarget;
       }
+    } else {
+      for (let d = 1; d <= totalDays; d++) {
+        const dow = new Date(year, month, d).getDay();
+        const scheduled = isHabitScheduledOnDow(habit, dow);
+        const rawState = monthData.habits?.[`${habit.id}-${d}`];
+        const state = rawState === true ? 'done' : rawState;
 
-      // Scheduled target excludes marked rest days (compassionate denominator)
-      if (scheduled && state !== 'rest') {
-        habitMonthTarget++;
-        totalScheduledTarget++;
-        scheduledPerDay[d - 1]++;
-      } else if (!scheduled && state === 'done') {
-        // Bonus check-in on an unscheduled day still counts cleanly
-        scheduledPerDay[d - 1]++;
+        if (state === 'done') {
+          actual++;
+          totalCompleted++;
+          checksPerDay[d - 1]++;
+        } else if (state === 'rest') {
+          restCount++;
+          totalRestDays++;
+        }
+
+        // Scheduled target excludes marked rest days (compassionate denominator)
+        if (scheduled && state !== 'rest') {
+          habitMonthTarget++;
+          totalScheduledTarget++;
+          scheduledPerDay[d - 1]++;
+        } else if (!scheduled && state === 'done') {
+          // Bonus check-in on an unscheduled day still counts cleanly
+          scheduledPerDay[d - 1]++;
+        }
       }
     }
 
     const { currentStreak, bestStreak } = computeHabitStreaks(
       habit,
       allLogsByHabit[habit.id] || {},
-      todayKey
+      todayKey,
+      weekStartsOn
     );
 
     const effectiveDenom = Math.max(habitMonthTarget, actual);
@@ -256,6 +334,7 @@ export function computeMonthAnalytics({
     topHabits,
     elapsedDays,
     totalCompleted,
+    sleepGoal,
     year,
     month
   });
@@ -289,6 +368,7 @@ function buildRhythmInsights({
   topHabits,
   elapsedDays,
   totalCompleted,
+  sleepGoal = 7,
   year,
   month
 }) {
@@ -304,7 +384,7 @@ function buildRhythmInsights({
   for (let d = 0; d < elapsedDays; d++) {
     if (sleepData[d] !== null && scheduledPerDay[d] > 0) {
       const ratio = Math.min(1, checksPerDay[d] / scheduledPerDay[d]);
-      if (sleepData[d] >= 7) wellRested.push(ratio);
+      if (sleepData[d] >= sleepGoal) wellRested.push(ratio);
       else shortRest.push(ratio);
     }
   }
@@ -316,7 +396,7 @@ function buildRhythmInsights({
       cards.push({
         icon: 'moon',
         headline: `Rested mornings lift completion by +${lift}%`,
-        detail: `After 7+ hours of sleep, you complete ${highAvg}% of scheduled habits versus ${lowAvg}% on shorter nights.`
+        detail: `After ${sleepGoal}+ hours of sleep, you complete ${highAvg}% of scheduled habits versus ${lowAvg}% on shorter nights.`
       });
     }
   } else if (wellRested.length + shortRest.length >= 2) {

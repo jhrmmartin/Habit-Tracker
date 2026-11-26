@@ -272,6 +272,17 @@
     }
   }
 
+  @media (max-width: 520px) {
+    .mobile-overflow-hide {
+      display: none !important;
+    }
+
+    .topbar-inner {
+      gap: 6px;
+      padding-block: 6px;
+    }
+  }
+
   @media (max-width: 400px) {
     .user-email-text {
       display: none;

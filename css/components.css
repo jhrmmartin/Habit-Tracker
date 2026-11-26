@@ -2135,4 +2135,185 @@
     color: var(--text-primary);
     margin-bottom: 4px;
   }
+
+  /* ── Extracted CSP-Safe Layout Utilities & New Controls ── */
+  .mobile-only-menu {
+    display: none;
+  }
+
+  @media (max-width: 520px) {
+    .mobile-only-menu {
+      display: contents;
+    }
+  }
+
+  .celebration-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    margin-bottom: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--success-border);
+    background: var(--success-subtle);
+    color: var(--success);
+    font-size: 0.84rem;
+    font-weight: 600;
+  }
+
+  .today-journal-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .journal-day-heading {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.86rem;
+  }
+
+  .journal-search-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .dialog-copy {
+    font-size: 0.89rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .inline-field-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .inline-wrap-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .form-row-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip-wrap-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .schedule-subpanel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .weekly-target-picker {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .weekly-pill-btn {
+    padding: 4px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-surface-elevated);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .weekly-pill-btn.is-met {
+    background: var(--success-subtle);
+    color: var(--success);
+  }
+
+  .flex-grow-input {
+    flex: 1 1 160px;
+  }
+
+  .custom-emoji-input {
+    width: 110px;
+    text-align: center;
+  }
+
+  .emoji-cat-bar {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+  }
+
+  .choice-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ink-swatch-terracotta { background: #C4532E; }
+  .ink-swatch-sage { background: #26664E; }
+  .ink-swatch-indigo { background: #335496; }
+
+  .pref-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    padding: 10px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: var(--bg-canvas);
+  }
+
+  .pref-toggle-title {
+    display: block;
+    font-size: 0.86rem;
+  }
+
+  .btn-tiny {
+    padding: 2px 6px;
+    min-block-size: 24px;
+    font-size: 0.75rem;
+  }
+
+  .auth-switch-btn {
+    align-self: center;
+    font-size: 0.8rem;
+  }
+
+  .inline-form {
+    display: inline;
+  }
+
+  .tour-step-title {
+    font-size: 1.05rem;
+  }
+
+  /* ── Offline SVG Chart Fallback ── */
+  .svg-chart-wrap {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .svg-chart-wrap svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
 }

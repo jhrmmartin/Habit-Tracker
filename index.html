@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#F6F2EA">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="description" content="Daymark — Small marks, lasting rhythm. A calm, tactile, local-first daily habit tracker, wellness check-in, and micro-journal.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 
   <title>Today | Daymark — Small marks, lasting rhythm</title>
 
@@ -87,17 +87,17 @@
             <span class="btn-label-desktop">New Habit</span>
           </button>
 
-          <button type="button" id="openKeepsakeBtn" class="btn btn-soft" aria-label="Open Monthly Keepsake print" title="Monthly Keepsake print">
+          <button type="button" id="openKeepsakeBtn" class="btn btn-soft mobile-overflow-hide" aria-label="Open Monthly Keepsake print" title="Monthly Keepsake print">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-8"/><path d="M16 12h-8"/><path d="M13 16h-5"/></svg>
             <span class="btn-label-desktop">Keepsake</span>
           </button>
 
-          <button type="button" id="privacyToggleBtn" class="icon-btn" aria-pressed="false" aria-label="Toggle privacy blur for notes and habits" title="Blur notes & habits in public (P)">
+          <button type="button" id="privacyToggleBtn" class="icon-btn mobile-overflow-hide" aria-pressed="false" aria-label="Toggle privacy blur for notes and habits" title="Blur notes & habits in public (P)">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
           </button>
 
           <!-- Always-Accessible Guide & Onboarding Menu -->
-          <button type="button" id="helpMenuBtn" class="icon-btn anchor-help-btn" popovertarget="helpMenuPopover" aria-label="Guide, walkthrough and keyboard shortcuts" title="Interactive guide & shortcuts (?)">
+          <button type="button" id="helpMenuBtn" class="icon-btn anchor-help-btn mobile-overflow-hide" popovertarget="helpMenuPopover" aria-label="Guide, walkthrough and keyboard shortcuts" title="Interactive guide & shortcuts (?)">
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </button>
 
@@ -123,6 +123,18 @@
           </button>
 
           <div id="moreMenuPopover" class="menu-popover" popover aria-label="Workspace tools and settings">
+            <div class="mobile-only-menu">
+              <div class="popover-section-label">Quick Tools</div>
+              <button type="button" id="menuKeepsakeBtn" class="popover-item">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/></svg>
+                <span>Monthly Keepsake</span>
+              </button>
+              <button type="button" id="menuPrivacyBtn" class="popover-item">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                <span>Toggle Privacy Blur</span>
+              </button>
+              <hr class="popover-divider">
+            </div>
             <div class="popover-section-label">Studio</div>
             <button type="button" id="menuPrefsBtn" class="popover-item">
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -226,11 +238,23 @@
           </div>
         </div>
 
+        <div id="todayCelebrationBanner" class="celebration-banner hidden" role="status">
+          <span aria-hidden="true">✦</span>
+          <span>All scheduled marks placed for today — rest easy.</span>
+        </div>
+
         <div id="todayHabitsHost"></div>
 
         <form id="todayAddHabitForm" class="add-habit-form" novalidate>
           <label for="todayNewHabitInput" class="visually-hidden">Quick add a new habit</label>
           <input type="text" id="todayNewHabitInput" class="form-input" maxlength="80" placeholder="Add a small daily habit… (e.g. Read 15 mins, Hydrate, Walk)">
+          <label for="todayNewHabitRoutine" class="visually-hidden">Routine group</label>
+          <select id="todayNewHabitRoutine" class="control-select" aria-label="Routine group for new habit">
+            <option value="morning">Morning</option>
+            <option value="afternoon">Afternoon</option>
+            <option value="evening">Evening</option>
+            <option value="anytime" selected>Anytime</option>
+          </select>
           <button type="submit" class="btn btn-primary">Add Habit</button>
         </form>
         <div id="todayAddError" class="form-error" role="alert"></div>
@@ -267,7 +291,7 @@
         </div>
 
         <!-- Unified Daily Note inside Today View -->
-        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border-subtle);">
+        <div class="today-journal-section">
           <div class="journal-toolbar">
             <label for="todayJournalInput" id="todayJournalTitle" class="panel-title">Daily Note</label>
             <span id="todayJournalStatus" class="form-hint tabular">Auto-saved</span>
@@ -345,7 +369,7 @@
         </div>
 
         <div class="journal-toolbar">
-          <span id="gridJournalDayHeading" style="font-weight:700; color:var(--accent); font-size:0.86rem;"></span>
+          <span id="gridJournalDayHeading" class="journal-day-heading"></span>
           <span id="gridJournalStatus" class="form-hint tabular">Auto-saved</span>
         </div>
 
@@ -355,8 +379,11 @@
 
         <div class="journal-history-section">
           <div class="journal-history-head">
-            <span class="form-label">Notes logged this month</span>
-            <input type="search" id="gridJournalSearch" class="form-input journal-search-input" placeholder="Search notes… (/)" aria-label="Search monthly journal notes">
+            <span class="form-label" id="gridJournalHistoryLabel">Notes logged this month</span>
+            <div class="journal-search-controls">
+              <button type="button" id="gridJournalAllMonthsBtn" class="chip-btn" aria-pressed="false" title="Toggle between active month and all saved months">All months</button>
+              <input type="search" id="gridJournalSearch" class="form-input journal-search-input" placeholder="Search notes… (/)" aria-label="Search monthly journal notes">
+            </div>
           </div>
           <div id="gridJournalChips" class="journal-chips"></div>
         </div>
@@ -443,7 +470,7 @@
       </div>
     </div>
     <div class="dialog-body">
-      <p id="confirmDialogMsg" style="font-size:0.9rem; color:var(--text-secondary);"></p>
+      <p id="confirmDialogMsg" class="dialog-copy"></p>
     </div>
     <form method="dialog" class="dialog-footer">
       <button type="submit" value="cancel" id="confirmDialogCancel" class="btn" autofocus>Cancel</button>
@@ -464,7 +491,7 @@
       <div class="dialog-body">
         <div class="form-group">
           <label for="habitNameField" class="form-label">Habit name</label>
-          <div style="display:flex; gap:8px; align-items:center;">
+          <div class="inline-field-row">
             <span id="habitDialogIconPreview" class="habit-card-emoji" aria-hidden="true">✦</span>
             <input type="text" id="habitNameField" class="form-input" maxlength="80" required placeholder="e.g. Morning walk, Read 15 mins, Hydrate">
           </div>
@@ -477,29 +504,44 @@
         </div>
 
         <div class="form-group">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-            <span class="form-label">Scheduled days</span>
-            <div style="display:flex; gap:4px; flex-wrap:wrap;">
-              <button type="button" class="chip-btn" data-schedule-preset="daily">Daily</button>
-              <button type="button" class="chip-btn" data-schedule-preset="weekdays">Weekdays</button>
-              <button type="button" class="chip-btn" data-schedule-preset="mwf">Mon/Wed/Fri</button>
-              <button type="button" class="chip-btn" data-schedule-preset="weekends">Weekends</button>
+          <div class="form-row-between">
+            <span class="form-label">Goal cadence</span>
+            <div class="segmented-toggle" role="group" aria-label="Schedule type">
+              <button type="button" id="schedModeDaysBtn" class="segmented-btn" aria-pressed="true">Specific days</button>
+              <button type="button" id="schedModeWeeklyBtn" class="segmented-btn" aria-pressed="false">Weekly target</button>
             </div>
           </div>
-          <div id="habitSchedulePicker" class="weekday-picker" role="group" aria-label="Select days of the week"></div>
-          <span class="form-hint">Unscheduled days won't count against your score or break your streak.</span>
+
+          <div id="habitDaysScheduleGroup" class="schedule-subpanel">
+            <div class="form-row-between">
+              <span class="form-hint">Choose days:</span>
+              <div class="chip-wrap-row">
+                <button type="button" class="chip-btn" data-schedule-preset="daily">Daily</button>
+                <button type="button" class="chip-btn" data-schedule-preset="weekdays">Weekdays</button>
+                <button type="button" class="chip-btn" data-schedule-preset="mwf">Mon/Wed/Fri</button>
+                <button type="button" class="chip-btn" data-schedule-preset="weekends">Weekends</button>
+              </div>
+            </div>
+            <div id="habitSchedulePicker" class="weekday-picker" role="group" aria-label="Select days of the week"></div>
+            <span class="form-hint">Unscheduled days won't count against your score or break your streak.</span>
+          </div>
+
+          <div id="habitWeeklyTargetGroup" class="schedule-subpanel hidden">
+            <div class="weekly-target-picker" id="habitWeeklyTargetPicker" role="group" aria-label="Times per week"></div>
+            <span class="form-hint">Complete this habit on any chosen days each week—remaining days won't break your streak.</span>
+          </div>
         </div>
 
         <div class="form-group">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div class="form-row-between">
             <label for="habitDialogEmojiSearch" class="form-label">Habit icon</label>
             <button type="button" id="habitAutoIconBtn" class="chip-btn">Auto-match icon</button>
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <input type="search" id="habitDialogEmojiSearch" class="form-input" style="flex:1 1 160px;" placeholder="Search icons (water, read, walk)…">
-            <input type="text" id="habitCustomEmojiField" class="form-input" style="width:110px; text-align:center;" maxlength="16" placeholder="Any emoji" aria-label="Custom emoji">
+          <div class="inline-wrap-row">
+            <input type="search" id="habitDialogEmojiSearch" class="form-input flex-grow-input" placeholder="Search icons (water, read, walk)…">
+            <input type="text" id="habitCustomEmojiField" class="form-input custom-emoji-input" maxlength="16" placeholder="Any emoji" aria-label="Custom emoji">
           </div>
-          <div id="habitEmojiCatBar" style="display:flex; gap:4px; flex-wrap:wrap; margin-top:2px;"></div>
+          <div id="habitEmojiCatBar" class="emoji-cat-bar"></div>
           <div id="habitDialogEmojiGrid" class="emoji-grid" role="group" aria-label="Choose an icon"></div>
         </div>
       </div>
@@ -534,15 +576,15 @@
           <span class="form-label">Studio Ink Accent</span>
           <div class="choice-grid" role="group" aria-label="Ink color accent">
             <button type="button" class="choice-card" data-pref-ink="terracotta" aria-pressed="true">
-              <span class="ink-dot" style="background:#C4532E;" aria-hidden="true"></span>
+              <span class="ink-dot ink-swatch-terracotta" aria-hidden="true"></span>
               <span>Terracotta</span>
             </button>
             <button type="button" class="choice-card" data-pref-ink="sage" aria-pressed="false">
-              <span class="ink-dot" style="background:#26664E;" aria-hidden="true"></span>
+              <span class="ink-dot ink-swatch-sage" aria-hidden="true"></span>
               <span>Botanical Sage</span>
             </button>
             <button type="button" class="choice-card" data-pref-ink="indigo" aria-pressed="false">
-              <span class="ink-dot" style="background:#335496;" aria-hidden="true"></span>
+              <span class="ink-dot ink-swatch-indigo" aria-hidden="true"></span>
               <span>Indigo Ink</span>
             </button>
           </div>
@@ -550,15 +592,28 @@
 
         <div class="form-group">
           <span class="form-label">Calendar Week Starts On</span>
-          <div class="choice-grid" style="grid-template-columns:1fr 1fr;" role="group" aria-label="First day of week">
+          <div class="choice-grid choice-grid-2" role="group" aria-label="First day of week">
             <button type="button" class="choice-card" data-pref-week="0" aria-pressed="true">Sunday</button>
             <button type="button" class="choice-card" data-pref-week="1" aria-pressed="false">Monday</button>
           </div>
         </div>
 
-        <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; padding:10px 12px; border:1px solid var(--border-subtle); border-radius:var(--radius-sm); background:var(--bg-canvas);">
+        <div class="form-group">
+          <label for="prefSleepGoalSelect" class="form-label">Personal Sleep Target</label>
+          <select id="prefSleepGoalSelect" class="control-select">
+            <option value="6.5">6.5 hours / night</option>
+            <option value="7" selected>7.0 hours / night (Default)</option>
+            <option value="7.5">7.5 hours / night</option>
+            <option value="8">8.0 hours / night</option>
+            <option value="8.5">8.5 hours / night</option>
+            <option value="9">9.0 hours / night</option>
+          </select>
+          <span class="form-hint">Used by Today view and Rhythm Insights to classify well-rested mornings.</span>
+        </div>
+
+        <label class="pref-toggle-row">
           <span>
-            <strong style="display:block; font-size:0.86rem;">Subtle Dot-Grid Paper</strong>
+            <strong class="pref-toggle-title">Subtle Dot-Grid Paper</strong>
             <span class="form-hint">Soft stationery dot pattern on the workspace background.</span>
           </span>
           <input type="checkbox" id="prefPaperDots" class="stamp-checkbox">
@@ -679,9 +734,9 @@
         </div>
 
         <div id="authPasswordGroup" class="form-group">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="form-row-between">
             <label for="authPasswordField" class="form-label">Password</label>
-            <button type="button" id="authForgotBtn" class="btn btn-ghost" style="padding:2px 6px; min-block-size:24px; font-size:0.75rem;">Forgot password?</button>
+            <button type="button" id="authForgotBtn" class="btn btn-ghost btn-tiny">Forgot password?</button>
           </div>
           <div class="password-wrap">
             <input type="password" id="authPasswordField" class="form-input" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters">
@@ -694,7 +749,7 @@
         <div id="authFormNotice" class="form-notice" role="status" aria-live="polite"></div>
         <div id="authFormError" class="form-error auth-feedback" role="alert"></div>
 
-        <button type="button" id="authSwitchModeBtn" class="btn btn-ghost" style="align-self:center; font-size:0.8rem;">
+        <button type="button" id="authSwitchModeBtn" class="btn btn-ghost auth-switch-btn">
           Don't have an account? Create one
         </button>
       </div>
@@ -714,7 +769,7 @@
       </div>
     </div>
     <div class="dialog-body">
-      <p style="font-size:0.88rem; color:var(--text-secondary);">
+      <p class="dialog-copy">
         Your data stays safely backed up in your cloud account. On a shared or public computer, choose <strong>Clear this device</strong> so your private notes aren't left behind.
       </p>
     </div>
@@ -832,10 +887,30 @@
 
     <div class="dialog-footer">
       <button type="button" id="guideStartTourBtn" class="btn btn-soft">Start 2-Minute Hands-On Tour</button>
-      <form method="dialog" style="display:inline;">
+      <form method="dialog" class="inline-form">
         <button type="submit" class="btn btn-primary">Got It</button>
       </form>
     </div>
+  </dialog>
+
+  <!-- 10. Backup Restore Mode Choice Dialog (Merge vs Replace) -->
+  <dialog id="importChoiceDialog" class="dm-dialog" closedby="any" aria-labelledby="importChoiceTitle">
+    <div class="dialog-header">
+      <div>
+        <h1 id="importChoiceTitle" class="dialog-title">Restore JSON Backup</h1>
+        <p class="dialog-subtitle" id="importChoiceSubtitle">Choose how to restore this backup file.</p>
+      </div>
+    </div>
+    <div class="dialog-body">
+      <p class="dialog-copy">
+        <strong>Merge with current data</strong> keeps your existing habits and adds missing check-ins and notes from the backup. <strong>Replace workspace</strong> restores the exact snapshot (with Undo available).
+      </p>
+    </div>
+    <form method="dialog" class="dialog-footer">
+      <button type="submit" value="cancel" id="importChoiceCancelBtn" class="btn" autofocus>Cancel</button>
+      <button type="submit" value="merge" class="btn btn-soft">Merge into current</button>
+      <button type="submit" value="replace" class="btn btn-primary">Replace workspace</button>
+    </form>
   </dialog>
 
   <!-- Opt-In Persistent Hands-On Interactive Walkthrough (popover="manual") -->
@@ -849,10 +924,10 @@
     </div>
 
     <div class="progress-track tour-progress" aria-hidden="true">
-      <div id="tourProgressFill" class="progress-fill" style="width:12.5%"></div>
+      <div id="tourProgressFill" class="progress-fill"></div>
     </div>
 
-    <h2 id="tourStepTitle" class="dialog-title" style="font-size:1.05rem;"></h2>
+    <h2 id="tourStepTitle" class="dialog-title tour-step-title"></h2>
     <p id="tourStepDesc" class="tour-desc"></p>
 
     <div id="tourTryBox" class="tour-try-box">

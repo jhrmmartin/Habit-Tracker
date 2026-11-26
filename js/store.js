@@ -81,6 +81,7 @@ function defaultPrefs() {
     appearance: 'system', // 'system' | 'light' | 'dark'
     ink: 'terracotta',    // 'terracotta' | 'sage' | 'indigo'
     weekStartsOn: 0,      // 0 = Sunday, 1 = Monday
+    sleepGoal: 7,         // personalized sleep target in hours
     paperDots: true,
     privacyBlur: false,
     motto: 'Small marks, lasting rhythm.',
@@ -104,12 +105,15 @@ function normalizeHabit(h, index = 0) {
     ? [...new Set(h.schedule.map(Number).filter((d) => d >= 0 && d <= 6))].sort()
     : [0, 1, 2, 3, 4, 5, 6];
   const routine = ROUTINES.some((r) => r.id === h?.routine) ? h.routine : 'anytime';
+  const rawWt = Number(h?.weeklyTarget);
+  const weeklyTarget = Number.isInteger(rawWt) && rawWt >= 1 && rawWt <= 6 ? rawWt : null;
   return {
     id: String(h?.id || safeId('h')),
     name,
     icon: sanitizeEmoji(h?.icon || suggestHabitIcon(name), '✦'),
     routine,
     schedule,
+    weeklyTarget,
     archived: Boolean(h?.archived),
     order: typeof h?.order === 'number' ? h.order : index,
     updatedAt: typeof h?.updatedAt === 'number' ? h.updatedAt : Date.now(),
@@ -386,7 +390,7 @@ export class DaymarkStore {
   }
 
   // ── Habit Mutations ──
-  addHabit({ name, icon, routine = 'anytime', schedule = [0, 1, 2, 3, 4, 5, 6] }) {
+  addHabit({ name, icon, routine = 'anytime', schedule = [0, 1, 2, 3, 4, 5, 6], weeklyTarget = null }) {
     const trimmed = String(name || '').trim();
     if (!trimmed) return { error: 'Please enter a habit name.' };
     if (trimmed.length > 80) return { error: 'Habit name must be 80 characters or fewer.' };
@@ -399,6 +403,7 @@ export class DaymarkStore {
       icon: icon || suggestHabitIcon(trimmed),
       routine,
       schedule,
+      weeklyTarget,
       archived: false,
       order: this.habits.length,
       updatedAt: Date.now()
@@ -647,6 +652,7 @@ export class DaymarkStore {
         icon: ch.icon || metaIcons[ch.id] || extra.icon || local?.icon || suggestHabitIcon(ch.name),
         routine: ch.routine || extra.routine || local?.routine || 'anytime',
         schedule: Array.isArray(ch.schedule) ? ch.schedule : (Array.isArray(extra.schedule) ? extra.schedule : local?.schedule),
+        weeklyTarget: ch.weeklyTarget ?? extra.weeklyTarget ?? local?.weeklyTarget ?? null,
         archived: ch.archived !== undefined ? ch.archived : (extra.archived ?? local?.archived ?? false),
         order: typeof ch.display_order === 'number' ? ch.display_order : i,
         updatedAt: Math.max(local?.updatedAt || 0, Date.now())
@@ -764,7 +770,37 @@ export class DaymarkStore {
     }, null, 2);
   }
 
-  importBackupJSON(jsonString) {
+  /**
+   * Searches Daily Notes across ALL stored months (newest first).
+   */
+  searchAllNotes(query = '') {
+    const q = String(query || '').trim().toLowerCase();
+    const keys = new Set([...this._listMonthKeys(), ...this.monthCache.keys()]);
+    const months = [];
+    for (const key of keys) {
+      const m = /^habitData_(\d{4})_(\d{1,2})$/.exec(key);
+      if (m) months.push({ key, year: Number(m[1]), month: Number(m[2]) });
+    }
+    months.sort((a, b) => (b.year - a.year) || (b.month - a.month));
+
+    const results = [];
+    for (const { year, month } of months) {
+      const totalDays = getDaysInMonth(year, month);
+      const data = this.getMonthData(year, month);
+      for (let day = totalDays; day >= 1; day--) {
+        const text = data.journal[day];
+        if (!text?.trim()) continue;
+        const dateKey = formatDateKey(year, month, day);
+        if (q && !text.toLowerCase().includes(q) && !`day ${day}`.includes(q) && !dateKey.includes(q)) {
+          continue;
+        }
+        results.push({ year, month, day, dateKey, text });
+      }
+    }
+    return results;
+  }
+
+  importBackupJSON(jsonString, { mode = 'replace' } = {}) {
     const parsed = safeJSONParse(jsonString, null);
     if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.habits)) {
       return { error: 'Invalid backup file. Please select a valid Daymark JSON export.' };
@@ -772,25 +808,82 @@ export class DaymarkStore {
 
     const snapshot = this._createUndoSnapshot('import-json', 'Imported JSON backup');
 
-    this.habits = parsed.habits.map((h, i) => normalizeHabit(h, i));
-    this.saveHabits();
+    if (mode === 'merge') {
+      const existingById = new Map(this.habits.map((h) => [h.id, h]));
+      const existingByName = new Map(this.habits.map((h) => [h.name.toLowerCase(), h]));
+      const incomingIdRemap = new Map();
+      const mergedHabits = [...this.habits];
 
-    if (parsed.prefs && typeof parsed.prefs === 'object') {
-      this.prefs = { ...defaultPrefs(), ...parsed.prefs };
-      this.savePrefs(true);
-    }
+      for (const rawH of parsed.habits) {
+        const norm = normalizeHabit(rawH, mergedHabits.length);
+        const byId = existingById.get(norm.id);
+        const byName = existingByName.get(norm.name.toLowerCase());
+        if (byId) {
+          incomingIdRemap.set(norm.id, byId.id);
+        } else if (byName) {
+          incomingIdRemap.set(norm.id, byName.id);
+        } else {
+          mergedHabits.push(norm);
+          existingById.set(norm.id, norm);
+          existingByName.set(norm.name.toLowerCase(), norm);
+        }
+      }
+      this.habits = mergedHabits.map((h, i) => normalizeHabit(h, i));
+      this.saveHabits();
 
-    if (parsed.months && typeof parsed.months === 'object') {
-      for (const [key, val] of Object.entries(parsed.months)) {
-        const match = /^habitData_(\d{4})_(\d{1,2})$/.exec(key);
-        if (!match) continue;
-        this.saveMonthData(Number(match[1]), Number(match[2]), val, false);
+      if (parsed.months && typeof parsed.months === 'object') {
+        for (const [key, val] of Object.entries(parsed.months)) {
+          const match = /^habitData_(\d{4})_(\d{1,2})$/.exec(key);
+          if (!match) continue;
+          const y = Number(match[1]);
+          const m = Number(match[2]);
+          const local = this.getMonthData(y, m);
+          const incoming = normalizeMonthData(val);
+          const remappedHabits = { ...local.habits };
+          for (const [hk, state] of Object.entries(incoming.habits)) {
+            const dash = hk.lastIndexOf('-');
+            if (dash <= 0) continue;
+            const origId = hk.slice(0, dash);
+            const dayPart = hk.slice(dash + 1);
+            const targetId = incomingIdRemap.get(origId) || origId;
+            if (!remappedHabits[`${targetId}-${dayPart}`]) {
+              remappedHabits[`${targetId}-${dayPart}`] = state;
+            }
+          }
+          this.saveMonthData(y, m, {
+            habits: remappedHabits,
+            moodSleep: { ...incoming.moodSleep, ...local.moodSleep },
+            journal: { ...incoming.journal, ...local.journal }
+          }, false);
+        }
+      }
+    } else {
+      // Replace mode: restore exact backup snapshot cleanly
+      for (const existingKey of this._listMonthKeys()) {
+        this._safeRemove(existingKey);
+      }
+      this.monthCache.clear();
+
+      this.habits = parsed.habits.map((h, i) => normalizeHabit(h, i));
+      this.saveHabits();
+
+      if (parsed.prefs && typeof parsed.prefs === 'object') {
+        this.prefs = { ...defaultPrefs(), ...parsed.prefs };
+        this.savePrefs(true);
+      }
+
+      if (parsed.months && typeof parsed.months === 'object') {
+        for (const [key, val] of Object.entries(parsed.months)) {
+          const match = /^habitData_(\d{4})_(\d{1,2})$/.exec(key);
+          if (!match) continue;
+          this.saveMonthData(Number(match[1]), Number(match[2]), val, false);
+        }
       }
     }
 
     this.emit('habits-changed', { reason: 'import' });
     this.emit('data-changed', { year: this.currentYear, month: this.currentMonth });
-    return { ok: true, snapshot, habitCount: this.habits.length };
+    return { ok: true, snapshot, habitCount: this.habits.length, mode };
   }
 
   // ── Formula-Safe CSV Export (Includes Daily Notes) ──

@@ -177,3 +177,29 @@ test('REGRESSION: getAllLogsByHabit ignores invalid day numbers for short months
   assert.equal(logs.h1['2026-11-30'], 'done');
   assert.equal(logs.h1['2026-11-31'], undefined);
 });
+
+test('importBackupJSON merge mode unions habits and notes while searchAllNotes scans multiple months', () => {
+  const mem = createMemoryStorage();
+  const s = new DaymarkStore(mem, () => new Date(2026, 10, 10));
+  const { habit: existing } = s.addHabit({ name: 'Read 15m', routine: 'evening' });
+  s.setJournalEntry(2026, 9, 15, 'October milestone');
+  s.setJournalEntry(2026, 10, 5, 'November note');
+
+  const backup = JSON.stringify({
+    app: 'Daymark',
+    habits: [{ id: 'b_1', name: 'Yoga', icon: '🧘', weeklyTarget: 3 }],
+    months: {
+      habitData_2026_10: { habits: { 'b_1-2': 'done' }, moodSleep: {}, journal: { '7': 'Yoga session' } }
+    }
+  });
+
+  const merged = s.importBackupJSON(backup, { mode: 'merge' });
+  assert.equal(merged.ok, true);
+  assert.equal(s.habits.some((h) => h.id === existing.id), true);
+  assert.equal(s.habits.some((h) => h.id === 'b_1' && h.weeklyTarget === 3), true);
+
+  const notes = s.searchAllNotes('note');
+  assert.equal(notes.length, 1);
+  assert.equal(notes[0].dateKey, '2026-11-05');
+  assert.equal(s.searchAllNotes('').length, 3);
+});

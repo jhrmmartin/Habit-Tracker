@@ -176,8 +176,8 @@ export function renderMonthlyGrid() {
 
       const nameSpan = document.createElement('span');
       nameSpan.className = 'grid-habit-name privacy-sensitive';
-      nameSpan.textContent = habit.name;
-      nameSpan.title = habit.name;
+      nameSpan.textContent = habit.weeklyTarget ? `${habit.name} (${habit.weeklyTarget}×/wk)` : habit.name;
+      nameSpan.title = habit.weeklyTarget ? `${habit.name} · Goal: ${habit.weeklyTarget}× per week` : habit.name;
 
       ident.append(emo, nameSpan);
 
@@ -418,5 +418,51 @@ export function wireGridAddForm() {
     if (input) input.value = '';
     if (errEl) errEl.textContent = '';
     toast.success(`Added "${res.habit.name}"`);
+  });
+
+  // Roving arrow-key / Home / End navigation across Monthly Grid cells
+  const gridTable = document.querySelector('#gridPanel .tracker-grid');
+  gridTable?.addEventListener('keydown', (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+    const isCellControl = target.matches('.grid-cell-btn, .grid-wellness-select, .day-header-btn');
+    if (!isCellControl) return;
+
+    const isSelect = target.tagName === 'SELECT';
+    if (isSelect && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) return;
+
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+      return;
+    }
+
+    const cell = target.closest('td, th');
+    const row = target.closest('tr');
+    if (!cell || !row) return;
+
+    const colIdx = cell.cellIndex;
+    const allRows = Array.from(gridTable.querySelectorAll('tr')).filter(
+      (r) => r.querySelector('.grid-cell-btn, .grid-wellness-select, .day-header-btn')
+    );
+    const rowIdx = allRows.indexOf(row);
+    let nextControl = null;
+
+    if (e.key === 'ArrowLeft' && colIdx > 1) {
+      nextControl = row.cells[colIdx - 1]?.querySelector('.grid-cell-btn, .grid-wellness-select, .day-header-btn');
+    } else if (e.key === 'ArrowRight' && colIdx < row.cells.length - 1) {
+      nextControl = row.cells[colIdx + 1]?.querySelector('.grid-cell-btn, .grid-wellness-select, .day-header-btn');
+    } else if (e.key === 'ArrowUp' && rowIdx > 0) {
+      nextControl = allRows[rowIdx - 1]?.cells[colIdx]?.querySelector('.grid-cell-btn, .grid-wellness-select, .day-header-btn');
+    } else if (e.key === 'ArrowDown' && rowIdx >= 0 && rowIdx < allRows.length - 1) {
+      nextControl = allRows[rowIdx + 1]?.cells[colIdx]?.querySelector('.grid-cell-btn, .grid-wellness-select, .day-header-btn');
+    } else if (e.key === 'Home') {
+      nextControl = row.cells[1]?.querySelector('.grid-cell-btn, .grid-wellness-select, .day-header-btn');
+    } else if (e.key === 'End') {
+      nextControl = row.cells[row.cells.length - 1]?.querySelector('.grid-cell-btn, .grid-wellness-select, .day-header-btn');
+    }
+
+    if (nextControl) {
+      e.preventDefault();
+      nextControl.focus();
+    }
   });
 }

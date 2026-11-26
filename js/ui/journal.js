@@ -14,6 +14,7 @@ let gridPendingSave = null;
 const indicatorTimers = new Map();
 let inspectorDay = null;
 let searchQuery = '';
+let searchAllMonths = false;
 let lastRenderedTodayKey = null;
 let lastRenderedGridKey = null;
 
@@ -231,40 +232,74 @@ export function renderJournalUI() {
 
 function renderLoggedNotesChips(year, month, monthData) {
   const host = document.getElementById('gridJournalChips');
+  const labelEl = document.getElementById('gridJournalHistoryLabel');
   if (!host) return;
   host.innerHTML = '';
 
-  const totalDays = getDaysInMonth(year, month);
   const q = searchQuery.trim().toLowerCase();
+  if (labelEl) {
+    labelEl.textContent = searchAllMonths ? 'Notes across all months' : 'Notes logged this month';
+  }
+
   let matched = 0;
 
-  for (let d = 1; d <= totalDays; d++) {
-    const text = monthData.journal[d];
-    if (!text?.trim()) continue;
-    if (q && !text.toLowerCase().includes(q) && !`day ${d}`.includes(q)) continue;
-    matched++;
+  if (searchAllMonths) {
+    const entries = store.searchAllNotes(q);
+    for (const item of entries) {
+      matched++;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const isCurrent = item.year === year && item.month === month && item.day === store.gridJournalDay;
+      btn.className = `journal-chip privacy-sensitive ${isCurrent ? 'active' : ''}`;
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `journal-chip privacy-sensitive ${d === store.gridJournalDay ? 'active' : ''}`;
+      const dayStrong = document.createElement('strong');
+      dayStrong.style.color = 'var(--accent)';
+      dayStrong.textContent = `${item.dateKey}:`;
 
-    const dayStrong = document.createElement('strong');
-    dayStrong.style.color = 'var(--accent)';
-    dayStrong.textContent = `Day ${d}:`;
+      const snippet = document.createElement('span');
+      snippet.textContent = item.text.replace(/\s+/g, ' ').slice(0, 38);
 
-    const snippet = document.createElement('span');
-    snippet.textContent = text.replace(/\s+/g, ' ').slice(0, 38);
+      btn.append(dayStrong, snippet);
+      btn.addEventListener('click', () => {
+        if (item.year !== store.currentYear || item.month !== store.currentMonth) {
+          store.setViewedMonth(item.year, item.month);
+        }
+        focusGridJournalDay(item.day);
+      });
+      host.appendChild(btn);
+    }
+  } else {
+    const totalDays = getDaysInMonth(year, month);
+    for (let d = 1; d <= totalDays; d++) {
+      const text = monthData.journal[d];
+      if (!text?.trim()) continue;
+      if (q && !text.toLowerCase().includes(q) && !`day ${d}`.includes(q)) continue;
+      matched++;
 
-    btn.append(dayStrong, snippet);
-    btn.addEventListener('click', () => focusGridJournalDay(d));
-    host.appendChild(btn);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `journal-chip privacy-sensitive ${d === store.gridJournalDay ? 'active' : ''}`;
+
+      const dayStrong = document.createElement('strong');
+      dayStrong.style.color = 'var(--accent)';
+      dayStrong.textContent = `Day ${d}:`;
+
+      const snippet = document.createElement('span');
+      snippet.textContent = text.replace(/\s+/g, ' ').slice(0, 38);
+
+      btn.append(dayStrong, snippet);
+      btn.addEventListener('click', () => focusGridJournalDay(d));
+      host.appendChild(btn);
+    }
   }
 
   if (matched === 0) {
     const empty = document.createElement('span');
     empty.className = 'muted';
     empty.style.fontSize = '0.78rem';
-    empty.textContent = q ? `No notes matching "${searchQuery}".` : 'No notes logged for this month yet.';
+    empty.textContent = q
+      ? `No notes matching "${searchQuery}".`
+      : (searchAllMonths ? 'No notes logged across any saved month yet.' : 'No notes logged for this month yet.');
     host.appendChild(empty);
   }
 }
@@ -323,6 +358,10 @@ export function flushPendingJournalSaves() {
   flushGridPendingSave();
 }
 
+export function hasPendingJournalSaves() {
+  return Boolean(todayPendingSave || gridPendingSave);
+}
+
 export function wireJournalControls() {
   const todayInput = document.getElementById('todayJournalInput');
   todayInput?.addEventListener('input', () => {
@@ -372,6 +411,13 @@ export function wireJournalControls() {
     const isSame = now.getFullYear() === store.currentYear && now.getMonth() === store.currentMonth;
     store.gridJournalDay = isSame ? now.getDate() : 1;
     renderJournalUI();
+  });
+
+  const allMonthsBtn = document.getElementById('gridJournalAllMonthsBtn');
+  allMonthsBtn?.addEventListener('click', () => {
+    searchAllMonths = !searchAllMonths;
+    allMonthsBtn.setAttribute('aria-pressed', String(searchAllMonths));
+    renderLoggedNotesChips(store.currentYear, store.currentMonth, store.getMonthData());
   });
 
   document.getElementById('gridJournalSearch')?.addEventListener('input', (e) => {

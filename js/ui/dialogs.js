@@ -86,6 +86,8 @@ export function confirmAction({
 let editingHabitId = null;
 let selectedHabitIcon = '✦';
 let selectedSchedule = [0, 1, 2, 3, 4, 5, 6];
+let scheduleMode = 'days'; // 'days' | 'weekly'
+let selectedWeeklyTarget = 3;
 let activeEmojiCat = 'all';
 
 function renderHabitEmojiGrid(query = '') {
@@ -133,8 +135,38 @@ function renderScheduleButtons() {
       }
       renderScheduleButtons();
     });
-    wrap.appendChild(btn);
+  wrap.appendChild(btn);
   });
+}
+
+function renderScheduleModeUI() {
+  const daysBtn = document.getElementById('schedModeDaysBtn');
+  const weeklyBtn = document.getElementById('schedModeWeeklyBtn');
+  const daysGroup = document.getElementById('habitDaysScheduleGroup');
+  const weeklyGroup = document.getElementById('habitWeeklyTargetGroup');
+  const isWeekly = scheduleMode === 'weekly';
+
+  daysBtn?.setAttribute('aria-pressed', String(!isWeekly));
+  weeklyBtn?.setAttribute('aria-pressed', String(isWeekly));
+  daysGroup?.classList.toggle('hidden', isWeekly);
+  weeklyGroup?.classList.toggle('hidden', !isWeekly);
+
+  const picker = document.getElementById('habitWeeklyTargetPicker');
+  if (!picker) return;
+  picker.innerHTML = '';
+  for (let n = 1; n <= 6; n++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'weekday-toggle';
+    btn.textContent = `${n}× / wk`;
+    btn.setAttribute('aria-label', `${n} times per week`);
+    btn.setAttribute('aria-pressed', String(selectedWeeklyTarget === n));
+    btn.addEventListener('click', () => {
+      selectedWeeklyTarget = n;
+      renderScheduleModeUI();
+    });
+    picker.appendChild(btn);
+  }
 }
 
 export function openHabitDialog(habitId = null) {
@@ -157,12 +189,20 @@ export function openHabitDialog(habitId = null) {
   if (routineSelect) routineSelect.value = habit ? habit.routine : 'morning';
   selectedHabitIcon = habit ? habit.icon : '✦';
   selectedSchedule = habit ? [...habit.schedule] : [0, 1, 2, 3, 4, 5, 6];
+  if (habit && Number.isInteger(habit.weeklyTarget) && habit.weeklyTarget > 0) {
+    scheduleMode = 'weekly';
+    selectedWeeklyTarget = habit.weeklyTarget;
+  } else {
+    scheduleMode = 'days';
+    selectedWeeklyTarget = 3;
+  }
   if (iconPreview) iconPreview.textContent = selectedHabitIcon;
   if (errorEl) errorEl.textContent = '';
   if (searchInput) searchInput.value = '';
   if (customEmojiInput) customEmojiInput.value = '';
   activeEmojiCat = 'all';
 
+  renderScheduleModeUI();
   renderScheduleButtons();
   renderEmojiCategoryTabs();
   renderHabitEmojiGrid('');
@@ -208,6 +248,16 @@ export function wireHabitEditorDialog() {
     }
   }
 
+  // Schedule cadence mode toggle
+  document.getElementById('schedModeDaysBtn')?.addEventListener('click', () => {
+    scheduleMode = 'days';
+    renderScheduleModeUI();
+  });
+  document.getElementById('schedModeWeeklyBtn')?.addEventListener('click', () => {
+    scheduleMode = 'weekly';
+    renderScheduleModeUI();
+  });
+
   // Schedule presets
   document.querySelectorAll('[data-schedule-preset]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -247,10 +297,11 @@ export function wireHabitEditorDialog() {
     const name = nameInput?.value?.trim() || '';
     const routine = routineSelect?.value || 'anytime';
     const icon = sanitizeEmoji(selectedHabitIcon || suggestHabitIcon(name), '✦');
+    const weeklyTarget = scheduleMode === 'weekly' ? selectedWeeklyTarget : null;
 
     const res = editingHabitId
-      ? store.updateHabit(editingHabitId, { name, icon, routine, schedule: selectedSchedule })
-      : store.addHabit({ name, icon, routine, schedule: selectedSchedule });
+      ? store.updateHabit(editingHabitId, { name, icon, routine, schedule: selectedSchedule, weeklyTarget })
+      : store.addHabit({ name, icon, routine, schedule: selectedSchedule, weeklyTarget });
 
     if (res.error) {
       if (errorEl) errorEl.textContent = res.error;
@@ -294,6 +345,9 @@ function syncPrefsDialogUI() {
   const dotsCb = document.getElementById('prefPaperDots');
   if (dotsCb) dotsCb.checked = Boolean(p.paperDots);
 
+  const sleepGoalSel = document.getElementById('prefSleepGoalSelect');
+  if (sleepGoalSel) sleepGoalSel.value = String(p.sleepGoal ?? 7);
+
   const mottoInput = document.getElementById('prefMottoInput');
   if (mottoInput) mottoInput.value = p.motto || '';
 
@@ -329,11 +383,19 @@ export function wirePreferencesDialog() {
     store.updatePrefs({ paperDots: Boolean(e.target.checked) });
   });
 
+  document.getElementById('prefSleepGoalSelect')?.addEventListener('change', (e) => {
+    const val = Number(e.target.value);
+    if (!Number.isNaN(val) && val >= 5 && val <= 11) {
+      store.updatePrefs({ sleepGoal: val });
+    }
+  });
+
   document.getElementById('prefsForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const motto = (document.getElementById('prefMottoInput')?.value || '').trim().slice(0, 140);
     const journalTitle = (document.getElementById('prefJournalTitleInput')?.value || '').trim().slice(0, 40) || 'Daily Note';
-    store.updatePrefs({ motto, journalTitle });
+    const sleepGoal = Number(document.getElementById('prefSleepGoalSelect')?.value) || 7;
+    store.updatePrefs({ motto, journalTitle, sleepGoal });
     dialog?.close('saved');
     toast.success('Studio preferences saved');
   });
@@ -454,5 +516,29 @@ export function openSignOutChoiceDialog(email) {
     dialog.returnValue = '';
     dialog.showModal();
     document.getElementById('signOutCancelBtn')?.focus();
+  });
+}
+
+// ── Backup Import Choice Dialog (Merge vs Replace) ──────────
+export function openImportChoiceDialog(habitCount = 0) {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('importChoiceDialog');
+    if (!dialog) {
+      resolve('replace');
+      return;
+    }
+    const sub = document.getElementById('importChoiceSubtitle');
+    if (sub) {
+      sub.textContent = `Backup contains ${habitCount} habit${habitCount === 1 ? '' : 's'}. Choose how to restore it.`;
+    }
+    dialog.addEventListener('close', () => {
+      const val = dialog.returnValue;
+      dialog.returnValue = '';
+      resolve(val || 'cancel');
+    }, { once: true });
+
+    dialog.returnValue = '';
+    dialog.showModal();
+    document.getElementById('importChoiceCancelBtn')?.focus();
   });
 }

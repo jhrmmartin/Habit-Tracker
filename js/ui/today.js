@@ -9,9 +9,10 @@ import {
   todayDateKey,
   getDayOfWeekFromKey,
   isHabitScheduledOnDow,
-  computeHabitStreaks
+  computeHabitStreaks,
+  getWeekProgressForDate
 } from '../streaks.js';
-import { openHabitDialog } from './dialogs.js';
+import { openHabitDialog, confirmAction } from './dialogs.js';
 import { flushPendingJournalSaves } from './journal.js';
 import { startGuidedTour, openGuideDialog } from './tour.js';
 import { toast } from './toast.js';
@@ -295,7 +296,12 @@ export function renderTodayView() {
         if (scheduled && !isRest) scheduledTotal++;
         else if (!scheduled && isDone) scheduledTotal++;
 
-        const { currentStreak } = computeHabitStreaks(h, allLogs[h.id] || {}, realTodayKey);
+        const { currentStreak } = computeHabitStreaks(
+          h,
+          allLogs[h.id] || {},
+          realTodayKey,
+          store.prefs.weekStartsOn
+        );
 
         const card = document.createElement('div');
         card.className = 'habit-card';
@@ -320,6 +326,9 @@ export function renderTodayView() {
         cb.checked = isDone;
         cb.addEventListener('change', () => {
           justStampedHabitId = cb.checked ? h.id : null;
+          if (cb.checked && typeof navigator.vibrate === 'function') {
+            try { navigator.vibrate(10); } catch { /* ignore */ }
+          }
           store.setHabitDayState(h.id, year, month, day, cb.checked ? 'done' : null);
         });
 
@@ -354,10 +363,18 @@ export function renderTodayView() {
           sub.appendChild(hint);
         }
 
+        if (Number.isInteger(h.weeklyTarget) && h.weeklyTarget > 0) {
+          const wk = getWeekProgressForDate(h, allLogs[h.id] || {}, activeKey, store.prefs.weekStartsOn);
+          const wkPill = document.createElement('span');
+          wkPill.className = `weekly-pill-btn${wk.met ? ' is-met' : ''}`;
+          wkPill.textContent = `${wk.done}/${wk.target} this wk`;
+          sub.appendChild(wkPill);
+        }
+
         meta.append(nameEl, sub);
         label.append(cb, emo, meta);
 
-        // Card secondary actions: Rest Day toggle + Edit habit
+        // Card secondary actions: Rest Day toggle + Edit + More menu (Reorder / Archive / Delete)
         const actions = document.createElement('div');
         actions.className = 'habit-card-actions';
 
@@ -384,7 +401,76 @@ export function renderTodayView() {
         editBtn.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
         editBtn.addEventListener('click', () => openHabitDialog(h.id));
 
-        actions.append(restBtn, editBtn);
+        const cardMenuId = `today-menu-${h.id}`;
+        const moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'icon-btn';
+        moreBtn.dataset.focusKey = `today-more-${h.id}`;
+        moreBtn.setAttribute('popovertarget', cardMenuId);
+        moreBtn.setAttribute('aria-label', `More actions for ${h.name}`);
+        moreBtn.title = `Reorder, archive, or delete ${h.name}`;
+        moreBtn.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>`;
+
+        const pop = document.createElement('div');
+        pop.id = cardMenuId;
+        pop.className = 'menu-popover';
+        pop.setAttribute('popover', 'auto');
+        pop.setAttribute('aria-label', `Actions for ${h.name}`);
+
+        const closePop = () => {
+          try {
+            if (typeof pop.hidePopover === 'function') pop.hidePopover();
+            else pop.classList.remove(':popover-open');
+          } catch {
+            pop.classList.remove(':popover-open');
+          }
+        };
+
+        const activePos = activeHabits.findIndex((item) => item.id === h.id);
+        const makeCardItem = (lbl, fn, { disabled = false, danger = false } = {}) => {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = `popover-item${danger ? ' popover-item-danger' : ''}`;
+          item.textContent = lbl;
+          item.disabled = disabled;
+          item.addEventListener('click', () => {
+            closePop();
+            fn();
+          });
+          return item;
+        };
+
+        pop.append(
+          makeCardItem('Move up', () => store.moveHabit(h.id, -1), { disabled: activePos <= 0 }),
+          makeCardItem('Move down', () => store.moveHabit(h.id, 1), { disabled: activePos === activeHabits.length - 1 }),
+          makeCardItem('Archive habit (keeps history)', () => {
+            const snap = store.archiveHabit(h.id, true);
+            if (snap) {
+              toast.info(`Archived "${h.name}"`, {
+                actionLabel: 'Undo',
+                onAction: () => store.undo(snap.id)
+              });
+            }
+          }),
+          makeCardItem(`Delete "${h.name}"…`, async () => {
+            const ok = await confirmAction({
+              title: `Delete "${h.name}"?`,
+              message: 'This removes the habit and its check-ins across months. Archive instead to keep past history.',
+              confirmLabel: 'Delete habit',
+              destructive: true
+            });
+            if (!ok) return;
+            const snap = store.deleteHabit(h.id);
+            if (snap) {
+              toast.info(`Deleted "${h.name}"`, {
+                actionLabel: 'Undo',
+                onAction: () => store.undo(snap.id)
+              });
+            }
+          }, { danger: true })
+        );
+
+        actions.append(restBtn, editBtn, moreBtn, pop);
         card.append(label, actions);
         stack.appendChild(card);
       }
@@ -403,9 +489,13 @@ export function renderTodayView() {
 function updateTodayProgress(done, target, restCount) {
   const pill = document.getElementById('todayScoreBadge');
   const fill = document.getElementById('todayProgressFill');
+  const celebration = document.getElementById('todayCelebrationBanner');
   const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0;
 
   if (fill) fill.style.width = `${pct}%`;
+  if (celebration) {
+    celebration.classList.toggle('hidden', !(target > 0 && done >= target));
+  }
   if (pill) {
     if (target === 0 && restCount > 0) {
       pill.textContent = 'Rest day';
@@ -450,12 +540,13 @@ function renderTodayWellness(year, month, day, monthData) {
   const rawSleep = monthData.moodSleep[`Hours of Sleep-${day}`];
   const currentSleep = rawSleep !== undefined && rawSleep !== '' ? Number(rawSleep) : null;
 
+  const sleepGoal = store.prefs.sleepGoal ?? 7;
   if (sleepDisplay) {
     sleepDisplay.textContent = currentSleep !== null ? `${currentSleep} hrs` : '-- hrs';
   }
   if (sleepReadout) {
     sleepReadout.textContent = currentSleep !== null
-      ? (currentSleep >= 7 ? 'Rested' : 'Short night')
+      ? (currentSleep >= sleepGoal ? 'Rested' : 'Short night')
       : 'Not logged';
   }
 
@@ -503,6 +594,7 @@ export function wireTodayView() {
   // Quick Add Habit Form inside Today view
   const form = document.getElementById('todayAddHabitForm');
   const input = document.getElementById('todayNewHabitInput');
+  const routineSel = document.getElementById('todayNewHabitRoutine');
   const errEl = document.getElementById('todayAddError');
 
   input?.addEventListener('input', () => {
@@ -511,7 +603,10 @@ export function wireTodayView() {
 
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const res = store.addHabit({ name: input?.value || '' });
+    const res = store.addHabit({
+      name: input?.value || '',
+      routine: routineSel?.value || 'anytime'
+    });
     if (res.error) {
       if (errEl) errEl.textContent = res.error;
       return;

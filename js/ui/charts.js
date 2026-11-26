@@ -49,25 +49,110 @@ function clearCanvasFallback(container, canvasId) {
 }
 
 function renderFallbackDaily(container, analytics) {
+  const pal = readPaletteTokens();
   setCanvasFallback(container, 'dailyMixedChart', (box) => {
-    const title = document.createElement('strong');
-    title.textContent = `${analytics.totalCompleted} marks completed across ${analytics.totalDays} days (${analytics.overallRate}%)`;
-    const sub = document.createElement('span');
-    sub.textContent = 'Interactive chart resumes automatically when online.';
-    box.append(title, sub);
+    const wrap = document.createElement('div');
+    wrap.className = 'svg-chart-wrap';
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    const n = Math.max(1, analytics.totalDays);
+    const W = 620;
+    const H = 170;
+    const padX = 14;
+    const padY = 16;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `${analytics.totalCompleted} marks across ${analytics.totalDays} days (${analytics.overallRate}%)`);
+
+    const maxMarks = Math.max(1, ...analytics.checksPerDay, ...analytics.scheduledPerDay);
+    const slotW = (W - padX * 2) / n;
+    const barW = Math.max(4, slotW * 0.58);
+
+    // Baseline
+    const axis = document.createElementNS(svgNS, 'line');
+    axis.setAttribute('x1', String(padX));
+    axis.setAttribute('x2', String(W - padX));
+    axis.setAttribute('y1', String(H - padY));
+    axis.setAttribute('y2', String(H - padY));
+    axis.setAttribute('stroke', pal.grid);
+    svg.appendChild(axis);
+
+    // Daily completion bars
+    analytics.checksPerDay.forEach((val, idx) => {
+      const barH = Math.max(2, (val / maxMarks) * (H - padY * 2));
+      const rect = document.createElementNS(svgNS, 'rect');
+      rect.setAttribute('x', String(padX + idx * slotW + (slotW - barW) / 2));
+      rect.setAttribute('y', String(H - padY - barH));
+      rect.setAttribute('width', String(barW));
+      rect.setAttribute('height', String(barH));
+      rect.setAttribute('rx', '2');
+      rect.setAttribute('fill', val > 0 ? pal.accent : pal.track);
+      svg.appendChild(rect);
+    });
+
+    // Mood polyline overlay (1-10 scaled to height)
+    const moodPts = analytics.moodData
+      .map((m, idx) => m === null ? null : `${(padX + idx * slotW + slotW / 2).toFixed(1)},${(H - padY - (m / 12) * (H - padY * 2)).toFixed(1)}`)
+      .filter(Boolean);
+    if (moodPts.length > 1) {
+      const poly = document.createElementNS(svgNS, 'polyline');
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', pal.mood);
+      poly.setAttribute('stroke-width', '2');
+      poly.setAttribute('points', moodPts.join(' '));
+      svg.appendChild(poly);
+    }
+
+    wrap.appendChild(svg);
+    box.appendChild(wrap);
   });
 }
 
 function renderFallbackDonut(container, analytics) {
+  const pal = readPaletteTokens();
   setCanvasFallback(container, 'overallDoughnutChart', (box) => {
-    const big = document.createElement('strong');
-    big.className = 'tabular';
-    big.style.fontSize = '1.75rem';
-    big.style.color = 'var(--accent)';
-    big.textContent = `${analytics.overallRate}%`;
-    const sub = document.createElement('span');
-    sub.textContent = `${analytics.totalCompleted} of ${analytics.totalGoal} scheduled marks`;
-    box.append(big, sub);
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 110 110');
+    svg.setAttribute('width', '96');
+    svg.setAttribute('height', '96');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const r = 42;
+    const circ = 2 * Math.PI * r;
+    const pct = Math.max(0, Math.min(100, analytics.overallRate));
+
+    const track = document.createElementNS(svgNS, 'circle');
+    track.setAttribute('cx', '55');
+    track.setAttribute('cy', '55');
+    track.setAttribute('r', String(r));
+    track.setAttribute('fill', 'none');
+    track.setAttribute('stroke', pal.track);
+    track.setAttribute('stroke-width', '10');
+
+    const arc = document.createElementNS(svgNS, 'circle');
+    arc.setAttribute('cx', '55');
+    arc.setAttribute('cy', '55');
+    arc.setAttribute('r', String(r));
+    arc.setAttribute('fill', 'none');
+    arc.setAttribute('stroke', pal.accent);
+    arc.setAttribute('stroke-width', '10');
+    arc.setAttribute('stroke-linecap', 'round');
+    arc.setAttribute('stroke-dasharray', `${(pct / 100) * circ} ${circ}`);
+    arc.setAttribute('transform', 'rotate(-90 55 55)');
+
+    const txt = document.createElementNS(svgNS, 'text');
+    txt.setAttribute('x', '55');
+    txt.setAttribute('y', '60');
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('fill', pal.accent);
+    txt.setAttribute('font-family', 'JetBrains Mono, monospace');
+    txt.setAttribute('font-size', '18');
+    txt.setAttribute('font-weight', '700');
+    txt.textContent = `${pct}%`;
+
+    svg.append(track, arc, txt);
+    box.appendChild(svg);
   });
 }
 
@@ -214,7 +299,9 @@ export function renderAnalyticsAndCharts() {
     monthData: store.getMonthData(year, month),
     allLogsByHabit: store.getAllLogsByHabit(),
     year,
-    month
+    month,
+    weekStartsOn: store.prefs.weekStartsOn ?? 0,
+    sleepGoal: store.prefs.sleepGoal ?? 7
   });
   lastAnalytics = analytics;
 

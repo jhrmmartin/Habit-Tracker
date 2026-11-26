@@ -327,6 +327,7 @@ async function pushPreferences() {
       icon: h.icon,
       routine: h.routine,
       schedule: h.schedule,
+      weeklyTarget: h.weeklyTarget ?? null,
       archived: h.archived
     };
   }
@@ -350,6 +351,7 @@ async function pushPreferences() {
           appearance: store.prefs.appearance,
           ink: store.prefs.ink,
           weekStartsOn: store.prefs.weekStartsOn,
+          sleepGoal: store.prefs.sleepGoal ?? 7,
           paperDots: store.prefs.paperDots,
           motto: store.prefs.motto,
           journalTitle: store.prefs.journalTitle,
@@ -454,11 +456,14 @@ async function fullSync({ preferCloud = false } = {}) {
     setSyncStatus('syncing');
     const y = store.currentYear;
     const m = store.currentMonth;
+    const prevY = m === 0 ? y - 1 : y;
+    const prevM = m === 0 ? 11 : m - 1;
 
     try {
-      const [cloudHabits, cloudMonth] = await Promise.all([
+      const [cloudHabits, cloudMonth, cloudPrevMonth] = await Promise.all([
         pullHabits(),
-        pullMonth(y, m)
+        pullMonth(y, m),
+        pullMonth(prevY, prevM)
       ]);
 
       const meta = user.user_metadata || {};
@@ -468,12 +473,18 @@ async function fullSync({ preferCloud = false } = {}) {
         store.mergeCloudHabits(cloudHabits, meta.habitIcons || {}, meta.habitExtras || {}, { preferCloud });
       }
 
+      if (cloudPrevMonth) {
+        store.mergeCloudMonth(prevY, prevM, cloudPrevMonth, { preferCloud });
+      }
       if (cloudMonth) {
         store.mergeCloudMonth(y, m, cloudMonth, { preferCloud });
       }
 
       // Push any locally merged offline changes back up cleanly
       await pushHabits();
+      if (store.dirtyMonths.has(`${prevY}_${prevM}`) || store.dirtyMonths.has(`habitData_${prevY}_${prevM}`)) {
+        await pushMonth(prevY, prevM);
+      }
       await pushMonth(y, m);
       await pushPreferences();
       retryCount = 0;
@@ -585,6 +596,10 @@ function unsubscribeRealtime() {
     try { c.removeChannel(realtimeChannel); } catch { /* ignore */ }
   }
   realtimeChannel = null;
+}
+
+export function hasPendingSyncWork() {
+  return Boolean(currentUser && (pendingPushMonths.size > 0 || store.dirtyMonths.size > 0));
 }
 
 export async function manualSyncNow() {

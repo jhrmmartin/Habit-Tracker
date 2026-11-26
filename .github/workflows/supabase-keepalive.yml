@@ -1,0 +1,19 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Runs every 4 days at 04:00 UTC so Supabase Free Tier stays active
+    - cron: '0 4 */4 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST health endpoint
+        run: |
+          URL="https://dtfyyxmrmhpxusynhvfl.supabase.co/rest/v1/"
+          KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0Znl5eG1ybWhweHVzeW5odmZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwMDIxNjIsImV4cCI6MjEwNjU3ODE2Mn0.58ysNGS3JflnZqtbAcL45W3l41DXdzHWNLbWeCpu3eI"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" -H "apikey: $KEY" || echo "000")
+          echo "Supabase ping HTTP status: $STATUS"
+          test "$STATUS" -ge 200 -a "$STATUS" -lt 500
