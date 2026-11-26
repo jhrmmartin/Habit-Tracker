@@ -638,6 +638,9 @@
   .stamp-checkbox:checked {
     background: var(--accent);
     border-color: var(--accent);
+  }
+
+  .stamp-checkbox.just-stamped:checked {
     animation: stampPop 220ms var(--ease-stamp);
   }
 
@@ -1849,6 +1852,23 @@
 
   .dm-toast[data-tone="error"] { border-color: var(--danger-border); }
   .dm-toast[data-tone="success"] { border-color: var(--success-border); }
+
+  .dm-dialog-toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 20px 12px;
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .dm-dialog-toast[data-tone="error"] { border-color: var(--danger-border); }
+  .dm-dialog-toast[data-tone="success"] { border-color: var(--success-border); }
 
   .toast-message {
     flex: 1;

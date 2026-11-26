@@ -18,6 +18,26 @@ import { toast } from './toast.js';
 const MONTH_LONG_FMT = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
 const DOW_SHORT_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
 
+function captureGridFocus() {
+  const active = document.activeElement;
+  if (!active || !document.getElementById('gridPanel')?.contains(active)) return null;
+  if (active.dataset?.habitId && active.dataset?.day) {
+    return { selector: `.grid-cell-btn[data-habit-id="${CSS.escape(active.dataset.habitId)}"][data-day="${CSS.escape(active.dataset.day)}"]` };
+  }
+  if (active.dataset?.focusKey) {
+    return { selector: `#gridPanel [data-focus-key="${CSS.escape(active.dataset.focusKey)}"]` };
+  }
+  return null;
+}
+
+function restoreGridFocus(snapshot) {
+  if (!snapshot?.selector) return;
+  const el = document.querySelector(snapshot.selector);
+  if (el && typeof el.focus === 'function') {
+    el.focus({ preventScroll: true });
+  }
+}
+
 function renderCellVisual(btn, habitName, day, state, scheduled) {
   btn.dataset.state = state || '';
   btn.classList.toggle('is-off-day', !scheduled);
@@ -38,6 +58,7 @@ function renderCellVisual(btn, habitName, day, state, scheduled) {
 }
 
 export function renderMonthlyGrid() {
+  const focusSnap = captureGridFocus();
   const year = store.currentYear;
   const month = store.currentMonth;
   const totalDays = getDaysInMonth(year, month);
@@ -327,6 +348,7 @@ export function renderMonthlyGrid() {
 
       const sel = document.createElement('select');
       sel.className = 'grid-wellness-select';
+      sel.dataset.focusKey = `grid-well-${rowDef.key}-${meta.d}`;
       sel.setAttribute('aria-label', `${rowDef.label} for day ${meta.d}`);
       sel.add(new Option('·', ''));
       for (const [labelText, val] of rowDef.options) {
@@ -363,6 +385,7 @@ export function renderMonthlyGrid() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'grid-cell-btn';
+    btn.dataset.focusKey = `grid-note-${meta.d}`;
     btn.dataset.state = meta.hasNote ? 'done' : '';
     btn.setAttribute('aria-label', meta.hasNote ? `Edit note for day ${meta.d}` : `Add note for day ${meta.d}`);
     btn.textContent = meta.hasNote ? '✎' : '+';
@@ -373,12 +396,17 @@ export function renderMonthlyGrid() {
     trNote.appendChild(td);
   }
   wellBody.appendChild(trNote);
+  restoreGridFocus(focusSnap);
 }
 
 export function wireGridAddForm() {
   const form = document.getElementById('gridAddHabitForm');
   const input = document.getElementById('gridNewHabitInput');
   const errEl = document.getElementById('gridAddError');
+
+  input?.addEventListener('input', () => {
+    if (errEl && errEl.textContent) errEl.textContent = '';
+  });
 
   form?.addEventListener('submit', (e) => {
     e.preventDefault();

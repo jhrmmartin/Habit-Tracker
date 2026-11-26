@@ -7,9 +7,15 @@ import { store, DEFAULT_PROMPTS } from '../store.js';
 import { getDaysInMonth, parseDateKey, todayDateKey } from '../streaks.js';
 import { safeId } from '../security.js';
 
-let saveDebounce = null;
+let todaySaveTimer = null;
+let todayPendingSave = null;
+let gridSaveTimer = null;
+let gridPendingSave = null;
+const indicatorTimers = new Map();
 let inspectorDay = null;
 let searchQuery = '';
+let lastRenderedTodayKey = null;
+let lastRenderedGridKey = null;
 
 const FULL_DATE_FMT = new Intl.DateTimeFormat(undefined, {
   weekday: 'long',
@@ -146,12 +152,13 @@ function renderPromptPills(containerId, targetTextareaId, getContextDay) {
 function flashSavedIndicator(id) {
   const el = document.getElementById(id);
   if (!el) return;
+  clearTimeout(indicatorTimers.get(id));
   el.textContent = 'Saved ✓';
   el.style.color = 'var(--success)';
-  setTimeout(() => {
+  indicatorTimers.set(id, setTimeout(() => {
     el.textContent = 'Auto-saved';
     el.style.color = '';
-  }, 1600);
+  }, 1600));
 }
 
 export function renderJournalUI() {
@@ -165,7 +172,9 @@ export function renderJournalUI() {
   const tParsed = parseDateKey(store.activeTodayKey);
   const tMonthData = store.getMonthData(tParsed.year, tParsed.month);
   const todayInput = document.getElementById('todayJournalInput');
-  if (todayInput && document.activeElement !== todayInput) {
+  const todayDayChanged = lastRenderedTodayKey !== store.activeTodayKey;
+  lastRenderedTodayKey = store.activeTodayKey;
+  if (todayInput && (todayDayChanged || document.activeElement !== todayInput)) {
     todayInput.value = tMonthData.journal[tParsed.day] || '';
   }
   renderPromptPills('todayJournalPills', 'todayJournalInput', () => parseDateKey(store.activeTodayKey));
@@ -200,7 +209,10 @@ export function renderJournalUI() {
   }
 
   const gridInput = document.getElementById('gridJournalInput');
-  if (gridInput && document.activeElement !== gridInput) {
+  const gridKey = `${y}-${m}-${store.gridJournalDay}`;
+  const gridDayChanged = lastRenderedGridKey !== gridKey;
+  lastRenderedGridKey = gridKey;
+  if (gridInput && (gridDayChanged || document.activeElement !== gridInput)) {
     gridInput.value = gData.journal[store.gridJournalDay] || '';
   }
 
@@ -209,6 +221,10 @@ export function renderJournalUI() {
     month: store.currentMonth,
     day: store.gridJournalDay
   }));
+
+  if (document.getElementById('dayNoteDialog')?.open) {
+    renderPromptPills('dayNoteDialogPills', 'dayNoteDialogInput', () => null);
+  }
 
   renderLoggedNotesChips(y, m, gData);
 }
@@ -284,44 +300,74 @@ export function openDayNoteDialog(day) {
   ta?.focus();
 }
 
+function flushTodayPendingSave() {
+  clearTimeout(todaySaveTimer);
+  if (!todayPendingSave) return;
+  const { year, month, day, value } = todayPendingSave;
+  todayPendingSave = null;
+  store.setJournalEntry(year, month, day, value);
+  flashSavedIndicator('todayJournalStatus');
+}
+
+function flushGridPendingSave() {
+  clearTimeout(gridSaveTimer);
+  if (!gridPendingSave) return;
+  const { year, month, day, value } = gridPendingSave;
+  gridPendingSave = null;
+  store.setJournalEntry(year, month, day, value);
+  flashSavedIndicator('gridJournalStatus');
+}
+
+export function flushPendingJournalSaves() {
+  flushTodayPendingSave();
+  flushGridPendingSave();
+}
+
 export function wireJournalControls() {
   const todayInput = document.getElementById('todayJournalInput');
   todayInput?.addEventListener('input', () => {
-    clearTimeout(saveDebounce);
-    saveDebounce = setTimeout(() => {
-      const { year, month, day } = parseDateKey(store.activeTodayKey);
-      store.setJournalEntry(year, month, day, todayInput.value);
-      flashSavedIndicator('todayJournalStatus');
-    }, 350);
+    const { year, month, day } = parseDateKey(store.activeTodayKey);
+    todayPendingSave = { year, month, day, value: todayInput.value };
+    clearTimeout(todaySaveTimer);
+    todaySaveTimer = setTimeout(flushTodayPendingSave, 350);
   });
+  todayInput?.addEventListener('blur', flushTodayPendingSave);
 
   const gridInput = document.getElementById('gridJournalInput');
   gridInput?.addEventListener('input', () => {
-    clearTimeout(saveDebounce);
-    saveDebounce = setTimeout(() => {
-      store.setJournalEntry(store.currentYear, store.currentMonth, store.gridJournalDay, gridInput.value);
-      flashSavedIndicator('gridJournalStatus');
-    }, 350);
+    gridPendingSave = {
+      year: store.currentYear,
+      month: store.currentMonth,
+      day: store.gridJournalDay,
+      value: gridInput.value
+    };
+    clearTimeout(gridSaveTimer);
+    gridSaveTimer = setTimeout(flushGridPendingSave, 350);
   });
+  gridInput?.addEventListener('blur', flushGridPendingSave);
 
   document.getElementById('gridJournalDaySelect')?.addEventListener('change', (e) => {
+    flushGridPendingSave();
     store.gridJournalDay = Number(e.target.value) || 1;
     renderJournalUI();
   });
 
   document.getElementById('gridJournalPrevBtn')?.addEventListener('click', () => {
+    flushGridPendingSave();
     const max = getDaysInMonth(store.currentYear, store.currentMonth);
     store.gridJournalDay = store.gridJournalDay <= 1 ? max : store.gridJournalDay - 1;
     renderJournalUI();
   });
 
   document.getElementById('gridJournalNextBtn')?.addEventListener('click', () => {
+    flushGridPendingSave();
     const max = getDaysInMonth(store.currentYear, store.currentMonth);
     store.gridJournalDay = store.gridJournalDay >= max ? 1 : store.gridJournalDay + 1;
     renderJournalUI();
   });
 
   document.getElementById('gridJournalTodayBtn')?.addEventListener('click', () => {
+    flushGridPendingSave();
     const now = new Date();
     const isSame = now.getFullYear() === store.currentYear && now.getMonth() === store.currentMonth;
     store.gridJournalDay = isSame ? now.getDate() : 1;

@@ -151,3 +151,29 @@ test('onboarding checklist milestones advance automatically as new user explores
   s.markOnboardingStep('explored');
   assert.equal(s.prefs.onboarding.explored, true);
 });
+
+test('REGRESSION: cloud initial merge preserves offline-added habits while replacing untouched starters', () => {
+  const mem = createMemoryStorage();
+  const s = new DaymarkStore(mem, () => new Date(2026, 10, 10));
+  const { habit: customLocal } = s.addHabit({ name: 'Journaling', icon: '✍️' });
+  s.setHabitDayState(customLocal.id, 2026, 10, 10, 'done');
+
+  s.mergeCloudHabits([{ id: 'cloud_1', name: 'Stretch', display_order: 0 }], {}, {}, { preferCloud: false });
+  assert.equal(s.habits.some((h) => h.id === 'cloud_1'), true);
+  assert.equal(s.habits.some((h) => h.id === customLocal.id), true);
+  assert.equal(s.habits.some((h) => h.isDefaultStarter), false);
+});
+
+test('REGRESSION: getAllLogsByHabit ignores invalid day numbers for short months', () => {
+  const mem = createMemoryStorage({
+    habitData_2026_10: JSON.stringify({
+      habits: { 'h1-30': 'done', 'h1-31': 'done' },
+      moodSleep: {},
+      journal: {}
+    })
+  });
+  const s = new DaymarkStore(mem, () => new Date(2026, 10, 10));
+  const logs = s.getAllLogsByHabit();
+  assert.equal(logs.h1['2026-11-30'], 'done');
+  assert.equal(logs.h1['2026-11-31'], undefined);
+});

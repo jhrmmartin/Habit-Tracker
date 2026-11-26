@@ -17,6 +17,10 @@ let pullTimer = null;
 let prefTimer = null;
 let isPulling = false;
 let retryCount = 0;
+let activeFullSync = null;
+let isAuthFlowRunning = false;
+const pendingPushMonths = new Set();
+const pendingPrefMonths = new Set();
 
 function getClientStatus() {
   const cfg = window.SUPABASE_CONFIG;
@@ -244,7 +248,7 @@ async function pushMonth(year, month) {
       wellByDate[logDate].mood = Math.round(Number(val));
     }
     if (metric === 'Hours of Sleep' && !Number.isNaN(Number(val))) {
-      wellByDate[logDate].sleep_hours = Math.round(Number(val));
+      wellByDate[logDate].sleep_hours = Number(val);
     }
   }
 
@@ -263,7 +267,15 @@ async function pushMonth(year, month) {
 
   const wellRows = Object.values(wellByDate).filter((w) => w.mood !== null || w.sleep_hours !== null);
   if (wellRows.length > 0) {
-    const { error } = await c.from('wellness_logs').upsert(wellRows, { onConflict: 'user_id,log_date' });
+    let { error } = await c.from('wellness_logs').upsert(wellRows, { onConflict: 'user_id,log_date' });
+    // Graceful fallback if user's existing Supabase wellness_logs.sleep_hours column is still integer
+    if (error && (error.code === '22P02' || String(error.message || '').toLowerCase().includes('invalid input syntax for type integer'))) {
+      const roundedRows = wellRows.map((w) => ({
+        ...w,
+        sleep_hours: w.sleep_hours !== null ? Math.round(w.sleep_hours) : null
+      }));
+      ({ error } = await c.from('wellness_logs').upsert(roundedRows, { onConflict: 'user_id,log_date' }));
+    }
     if (error) throw error;
   }
 
@@ -319,16 +331,20 @@ async function pushPreferences() {
     };
   }
 
-  // Also preserve rest-day markers for current month cleanly
-  const y = store.currentYear;
-  const m = store.currentMonth;
-  const monthData = store.getMonthData(y, m);
-  const restKeys = Object.entries(monthData.habits || {})
-    .filter(([, v]) => v === 'rest')
-    .map(([k]) => k);
+  // Preserve rest-day markers for current month and any recently edited months
+  const monthsToInclude = new Set([`${store.currentYear}_${store.currentMonth}`, ...pendingPrefMonths]);
+  pendingPrefMonths.clear();
+  const restUpdates = {};
+  for (const ym of monthsToInclude) {
+    const [yStr, mStr] = ym.split('_');
+    const monthData = store.getMonthData(Number(yStr), Number(mStr));
+    restUpdates[`rest_${yStr}_${mStr}`] = Object.entries(monthData.habits || {})
+      .filter(([, v]) => v === 'rest')
+      .map(([k]) => k);
+  }
 
   try {
-    await c.auth.updateUser({
+    const res = await c.auth.updateUser({
       data: {
         daymarkPrefs: {
           appearance: store.prefs.appearance,
@@ -341,10 +357,13 @@ async function pushPreferences() {
         },
         habitIcons,
         habitExtras,
-        [`rest_${y}_${m}`]: restKeys,
+        ...restUpdates,
         lastSyncedAt: new Date().toISOString()
       }
     });
+    if (res?.data?.user) {
+      currentUser = res.data.user;
+    }
   } catch (err) {
     console.warn('[Daymark Sync] Preferences sync skipped:', err?.message);
   }
@@ -422,51 +441,61 @@ function applyCloudMetadataPrefs(meta) {
 
 // ── Orchestration ──
 async function fullSync({ preferCloud = false } = {}) {
-  const user = await resolveUser();
-  if (!user) return;
-  if (!navigator.onLine) {
-    setSyncStatus('offline', 'Offline — changes stay saved locally');
-    return;
-  }
+  if (activeFullSync) return activeFullSync;
 
-  setSyncStatus('syncing');
-  const y = store.currentYear;
-  const m = store.currentMonth;
-
-  try {
-    const [cloudHabits, cloudMonth] = await Promise.all([
-      pullHabits(),
-      pullMonth(y, m)
-    ]);
-
-    const meta = user.user_metadata || {};
-    applyCloudMetadataPrefs(meta);
-
-    if (cloudHabits && cloudHabits.length > 0) {
-      store.mergeCloudHabits(cloudHabits, meta.habitIcons || {}, meta.habitExtras || {});
-    }
-
-    if (cloudMonth) {
-      store.mergeCloudMonth(y, m, cloudMonth, { preferCloud });
-    }
-
-    // Push any locally merged offline changes back up cleanly
-    await pushHabits();
-    await pushMonth(y, m);
-    retryCount = 0;
-    setSyncStatus('synced');
-  } catch (err) {
-    console.warn('[Daymark Sync] Full sync issue:', err?.message);
+  activeFullSync = (async () => {
+    const user = await resolveUser();
+    if (!user) return;
     if (!navigator.onLine) {
-      setSyncStatus('offline');
-    } else {
-      setSyncStatus('error', err?.message || 'Sync error — click to retry');
+      setSyncStatus('offline', 'Offline — changes stay saved locally');
+      return;
     }
-  }
+
+    setSyncStatus('syncing');
+    const y = store.currentYear;
+    const m = store.currentMonth;
+
+    try {
+      const [cloudHabits, cloudMonth] = await Promise.all([
+        pullHabits(),
+        pullMonth(y, m)
+      ]);
+
+      const meta = user.user_metadata || {};
+      applyCloudMetadataPrefs(meta);
+
+      if (cloudHabits && cloudHabits.length > 0) {
+        store.mergeCloudHabits(cloudHabits, meta.habitIcons || {}, meta.habitExtras || {}, { preferCloud });
+      }
+
+      if (cloudMonth) {
+        store.mergeCloudMonth(y, m, cloudMonth, { preferCloud });
+      }
+
+      // Push any locally merged offline changes back up cleanly
+      await pushHabits();
+      await pushMonth(y, m);
+      await pushPreferences();
+      retryCount = 0;
+      setSyncStatus('synced');
+    } catch (err) {
+      console.warn('[Daymark Sync] Full sync issue:', err?.message);
+      if (!navigator.onLine) {
+        setSyncStatus('offline');
+      } else {
+        setSyncStatus('error', err?.message || 'Sync error — click to retry');
+      }
+    } finally {
+      activeFullSync = null;
+    }
+  })();
+
+  return activeFullSync;
 }
 
 function schedulePush(year, month) {
   if (!currentUser) return;
+  pendingPushMonths.add(`${year}_${month}`);
   clearTimeout(pushTimer);
   setSyncStatus('syncing');
 
@@ -475,12 +504,18 @@ function schedulePush(year, month) {
       setSyncStatus('offline');
       return;
     }
+    const monthsSnapshot = Array.from(pendingPushMonths);
+    pendingPushMonths.clear();
     try {
       await pushHabits();
-      await pushMonth(year, month);
+      for (const ym of monthsSnapshot) {
+        const [yStr, mStr] = ym.split('_');
+        await pushMonth(Number(yStr), Number(mStr));
+      }
       retryCount = 0;
       setSyncStatus('synced');
     } catch (err) {
+      for (const ym of monthsSnapshot) pendingPushMonths.add(ym);
       console.warn('[Daymark Sync] Background push failed:', err?.message);
       if (isNetworkError(err) && retryCount < 3) {
         retryCount++;
@@ -492,8 +527,11 @@ function schedulePush(year, month) {
   }, 800);
 }
 
-function schedulePrefsPush() {
+function schedulePrefsPush(year = null, month = null) {
   if (!currentUser) return;
+  if (year !== null && month !== null) {
+    pendingPrefMonths.add(`${year}_${month}`);
+  }
   clearTimeout(prefTimer);
   prefTimer = setTimeout(() => {
     if (navigator.onLine) pushPreferences();
@@ -512,7 +550,7 @@ function schedulePull() {
       const [cloudHabits, cloudMonth] = await Promise.all([pullHabits(), pullMonth(y, m)]);
       const meta = currentUser.user_metadata || {};
       if (cloudHabits && cloudHabits.length > 0) {
-        store.mergeCloudHabits(cloudHabits, meta.habitIcons || {}, meta.habitExtras || {});
+        store.mergeCloudHabits(cloudHabits, meta.habitIcons || {}, meta.habitExtras || {}, { preferCloud: true });
       }
       if (cloudMonth) {
         store.mergeCloudMonth(y, m, cloudMonth, { preferCloud: true });
@@ -716,6 +754,7 @@ async function handleAuthSubmit(e) {
   }
 
   const redirectUrl = window.location.origin + window.location.pathname;
+  isAuthFlowRunning = true;
 
   try {
     if (authMode === 'reset') {
@@ -750,7 +789,6 @@ async function handleAuthSubmit(e) {
         updateAccountUI(currentUser);
         document.getElementById('authDialog')?.close('signed-in');
         await fullSync({ preferCloud: false });
-        await pushPreferences();
         subscribeRealtime(currentUser);
         toast.success(`Cloud sync active for ${currentUser.email}`);
       }
@@ -767,6 +805,7 @@ async function handleAuthSubmit(e) {
   } catch (err) {
     if (errEl) errEl.textContent = formatAuthError(err);
   } finally {
+    isAuthFlowRunning = false;
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = getSubmitLabel(authMode);
@@ -829,6 +868,13 @@ export async function initSync() {
     if (!currentUser) return;
     if (type === 'data-changed') {
       schedulePush(detail.year, detail.month);
+      const md = store.getMonthData(detail.year, detail.month);
+      const hasRest = Object.values(md.habits || {}).includes('rest');
+      const hadCloudRest = Array.isArray(currentUser.user_metadata?.[`rest_${detail.year}_${detail.month}`])
+        && currentUser.user_metadata[`rest_${detail.year}_${detail.month}`].length > 0;
+      if (hasRest || hadCloudRest) {
+        schedulePrefsPush(detail.year, detail.month);
+      }
     } else if (type === 'habits-changed' && !detail.fromCloud) {
       schedulePush(store.currentYear, store.currentMonth);
       schedulePrefsPush();
@@ -889,11 +935,11 @@ export async function initSync() {
       currentUser = session.user;
       updateAccountUI(currentUser);
       openAuthDialog('update-password');
-    } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+    } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session?.user) {
       const wasSignedOut = !currentUser;
       currentUser = session.user;
       updateAccountUI(currentUser);
-      if (wasSignedOut && event === 'SIGNED_IN') {
+      if (wasSignedOut && event === 'SIGNED_IN' && !isAuthFlowRunning) {
         fullSync({ preferCloud: false });
         subscribeRealtime(currentUser);
       }

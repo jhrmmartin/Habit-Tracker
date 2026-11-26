@@ -230,6 +230,7 @@ export function wireHabitEditorDialog() {
       selectedHabitIcon = val;
       const preview = document.getElementById('habitDialogIconPreview');
       if (preview) preview.textContent = val;
+      renderHabitEmojiGrid(searchInput?.value || '');
     }
   });
 

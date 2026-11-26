@@ -14,6 +14,7 @@ let highlightedEl = null;
 let activeStepCleanup = null;
 let modalWatcher = null;
 let pausedForModal = false;
+let tourOpenerEl = null;
 
 const TOUR_STEPS = [
   {
@@ -302,6 +303,8 @@ function attachModalPauseWatcher() {
       hidePopoverEl(panel);
     } else if (!anyModalOpen && pausedForModal) {
       pausedForModal = false;
+      const step = TOUR_STEPS[stepIdx];
+      if (step) applyStepTargetHighlight(step, { scroll: false });
       showPopoverEl(panel);
     }
   });
@@ -313,6 +316,9 @@ function attachModalPauseWatcher() {
 export function startGuidedTour(startStep = 0) {
   const panel = document.getElementById('tourPopover');
   if (!panel) return;
+  if (!isTourOpen) {
+    tourOpenerEl = document.activeElement;
+  }
   stepIdx = Math.max(0, Math.min(TOUR_STEPS.length - 1, startStep));
   isTourOpen = true;
   pausedForModal = false;
@@ -322,7 +328,9 @@ export function startGuidedTour(startStep = 0) {
 }
 
 export function closeGuidedTour({ completed = false } = {}) {
+  const opener = tourOpenerEl;
   const returnTarget = highlightedEl;
+  tourOpenerEl = null;
   isTourOpen = false;
   pausedForModal = false;
   clearStepWatch();
@@ -336,9 +344,10 @@ export function closeGuidedTour({ completed = false } = {}) {
     toast.success('Walkthrough complete — welcome to Daymark!');
   }
 
-  // Return focus cleanly to the related control if focusable
-  if (returnTarget && typeof returnTarget.focus === 'function' && returnTarget.tabIndex >= 0) {
-    returnTarget.focus();
+  // Return focus cleanly to the opener control or highlighted control if still focusable
+  const focusCandidate = (opener && opener.isConnected && opener !== document.body) ? opener : returnTarget;
+  if (focusCandidate && typeof focusCandidate.focus === 'function' && focusCandidate.tabIndex >= 0) {
+    focusCandidate.focus();
   }
 }
 

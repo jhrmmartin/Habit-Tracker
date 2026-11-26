@@ -12,6 +12,7 @@ import {
   computeHabitStreaks
 } from '../streaks.js';
 import { openHabitDialog } from './dialogs.js';
+import { flushPendingJournalSaves } from './journal.js';
 import { startGuidedTour, openGuideDialog } from './tour.js';
 import { toast } from './toast.js';
 
@@ -33,6 +34,31 @@ const DATE_FMT = new Intl.DateTimeFormat(undefined, {
   month: 'short',
   day: 'numeric'
 });
+
+let justStampedHabitId = null;
+
+function captureTodayFocus() {
+  const active = document.activeElement;
+  if (!active) return null;
+  if (active.id && (active.id.startsWith('today-cb-') || active.id === 'sleepMinusBtn' || active.id === 'sleepPlusBtn')) {
+    return { selector: `#${CSS.escape(active.id)}` };
+  }
+  if (active.dataset?.focusKey) {
+    return { selector: `[data-focus-key="${CSS.escape(active.dataset.focusKey)}"]` };
+  }
+  if (active.dataset?.sleepPreset !== undefined) {
+    return { selector: `[data-sleep-preset="${CSS.escape(active.dataset.sleepPreset)}"]` };
+  }
+  return null;
+}
+
+function restoreTodayFocus(snapshot) {
+  if (!snapshot?.selector) return;
+  const el = document.querySelector(snapshot.selector);
+  if (el && typeof el.focus === 'function') {
+    el.focus({ preventScroll: true });
+  }
+}
 
 const CHECKLIST_ITEMS = [
   { key: 'stamped', label: 'Stamp your first habit on today’s deck' },
@@ -191,6 +217,7 @@ function renderStarterBanner() {
 }
 
 export function renderTodayView() {
+  const focusSnap = captureTodayFocus();
   renderStarterBanner();
 
   const activeKey = store.activeTodayKey;
@@ -286,8 +313,13 @@ export function renderTodayView() {
         cb.type = 'checkbox';
         cb.id = cbId;
         cb.className = 'stamp-checkbox';
+        if (isDone && justStampedHabitId === h.id) {
+          cb.classList.add('just-stamped');
+          justStampedHabitId = null;
+        }
         cb.checked = isDone;
         cb.addEventListener('change', () => {
+          justStampedHabitId = cb.checked ? h.id : null;
           store.setHabitDayState(h.id, year, month, day, cb.checked ? 'done' : null);
         });
 
@@ -332,6 +364,7 @@ export function renderTodayView() {
         const restBtn = document.createElement('button');
         restBtn.type = 'button';
         restBtn.className = 'icon-btn';
+        restBtn.dataset.focusKey = `today-rest-${h.id}`;
         restBtn.setAttribute('aria-pressed', String(isRest));
         restBtn.setAttribute('aria-label', isRest ? `Clear rest day for ${h.name}` : `Mark rest day for ${h.name} (keeps streak safe)`);
         restBtn.title = isRest ? 'Clear rest day' : 'Mark Rest / Skip day (protects streak)';
@@ -364,6 +397,7 @@ export function renderTodayView() {
   }
 
   renderTodayWellness(year, month, day, monthData);
+  restoreTodayFocus(focusSnap);
 }
 
 function updateTodayProgress(done, target, restCount) {
@@ -399,6 +433,7 @@ function renderTodayWellness(year, month, day, monthData) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'mood-pill-btn';
+      btn.dataset.focusKey = `today-mood-${v}`;
       btn.textContent = String(v);
       btn.setAttribute('aria-pressed', String(currentMood === v));
       btn.setAttribute('aria-label', `Mood ${v} out of 10, ${MOOD_LABELS[v]}`);
@@ -433,12 +468,15 @@ function renderTodayWellness(year, month, day, monthData) {
 
 export function wireTodayView() {
   document.getElementById('todayPrevDayBtn')?.addEventListener('click', () => {
+    flushPendingJournalSaves();
     store.setActiveTodayKey(shiftDateKey(store.activeTodayKey, -1));
   });
   document.getElementById('todayNextDayBtn')?.addEventListener('click', () => {
+    flushPendingJournalSaves();
     store.setActiveTodayKey(shiftDateKey(store.activeTodayKey, 1));
   });
   document.getElementById('todayJumpNowBtn')?.addEventListener('click', () => {
+    flushPendingJournalSaves();
     store.setActiveTodayKey(todayDateKey());
   });
 
@@ -466,6 +504,10 @@ export function wireTodayView() {
   const form = document.getElementById('todayAddHabitForm');
   const input = document.getElementById('todayNewHabitInput');
   const errEl = document.getElementById('todayAddError');
+
+  input?.addEventListener('input', () => {
+    if (errEl && errEl.textContent) errEl.textContent = '';
+  });
 
   form?.addEventListener('submit', (e) => {
     e.preventDefault();

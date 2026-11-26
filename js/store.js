@@ -112,7 +112,8 @@ function normalizeHabit(h, index = 0) {
     schedule,
     archived: Boolean(h?.archived),
     order: typeof h?.order === 'number' ? h.order : index,
-    updatedAt: typeof h?.updatedAt === 'number' ? h.updatedAt : Date.now()
+    updatedAt: typeof h?.updatedAt === 'number' ? h.updatedAt : Date.now(),
+    ...(h?.isDefaultStarter ? { isDefaultStarter: true } : {})
   };
 }
 
@@ -290,7 +291,9 @@ export class DaymarkStore {
     }
 
     // Fresh guest: start with warm Everyday Balance pack (and let them swap in 1 click)
-    const starter = STARTER_PACKS.everyday.habits.map((h, i) => normalizeHabit(h, i));
+    const starter = STARTER_PACKS.everyday.habits.map((h, i) =>
+      normalizeHabit({ ...h, isDefaultStarter: true }, i)
+    );
     this._safeSet(KEYS.HABITS, JSON.stringify(starter));
     return starter;
   }
@@ -345,6 +348,7 @@ export class DaymarkStore {
       if (!match) continue;
       const y = Number(match[1]);
       const m = Number(match[2]);
+      const maxDay = getDaysInMonth(y, m);
       const data = this.getMonthData(y, m);
       for (const [entryKey, state] of Object.entries(data.habits || {})) {
         if (state !== 'done' && state !== 'rest') continue;
@@ -352,7 +356,7 @@ export class DaymarkStore {
         if (dash <= 0) continue;
         const habitId = entryKey.slice(0, dash);
         const day = Number(entryKey.slice(dash + 1));
-        if (!habitId || Number.isNaN(day) || day < 1 || day > 31) continue;
+        if (!habitId || Number.isNaN(day) || day < 1 || day > maxDay) continue;
         if (!map[habitId]) map[habitId] = {};
         map[habitId][formatDateKey(y, m, day)] = state;
       }
@@ -422,6 +426,7 @@ export class DaymarkStore {
     this.habits[idx] = normalizeHabit({
       ...this.habits[idx],
       ...updates,
+      isDefaultStarter: false,
       name: nextName,
       updatedAt: Date.now()
     }, idx);
@@ -511,6 +516,7 @@ export class DaymarkStore {
     if (!this.prefs.onboarding || this.prefs.onboarding[stepKey]) return;
     this.prefs.onboarding = { ...this.prefs.onboarding, [stepKey]: true };
     this._safeSet(KEYS.PREFS, JSON.stringify(this.prefs));
+    this.emit('ui-refresh', { reason: 'onboarding', stepKey });
   }
 
   // ── Day Log, Wellness & Journal Mutations ──
@@ -608,7 +614,6 @@ export class DaymarkStore {
     this.habits = snap.habits.map((h, i) => normalizeHabit(h, i));
     this.prefs = { ...defaultPrefs(), ...snap.prefs };
     this.saveHabits();
-    this.savePrefs(true);
 
     this.monthCache.clear();
     for (const [key, data] of Object.entries(snap.months)) {
@@ -617,13 +622,14 @@ export class DaymarkStore {
       this._safeSet(key, JSON.stringify(normalized));
     }
 
+    this.savePrefs(true);
     this.emit('habits-changed', { reason: 'undo' });
     this.emit('data-changed', { year: this.currentYear, month: this.currentMonth });
     return true;
   }
 
   // ── Conflict-Safe Cloud Merge (Fixes Offline Overwrite & Icon Stripping Bugs) ──
-  mergeCloudHabits(cloudHabits = [], metaIcons = {}, metaExtras = {}) {
+  mergeCloudHabits(cloudHabits = [], metaIcons = {}, metaExtras = {}, { preferCloud = false } = {}) {
     if (!Array.isArray(cloudHabits)) return false;
     const localMap = new Map(this.habits.map((h) => [h.id, h]));
     const merged = [];
@@ -645,6 +651,19 @@ export class DaymarkStore {
         order: typeof ch.display_order === 'number' ? ch.display_order : i,
         updatedAt: Math.max(local?.updatedAt || 0, Date.now())
       }, i));
+    }
+
+    // Preserve locally created or logged habits when merging offline/guest data into cloud
+    if (!preferCloud) {
+      const allLogs = this.getAllLogsByHabit();
+      for (const local of this.habits) {
+        if (seen.has(local.id)) continue;
+        const hasLogs = Boolean(allLogs[local.id] && Object.keys(allLogs[local.id]).length > 0);
+        if (!local.isDefaultStarter || hasLogs) {
+          merged.push(normalizeHabit({ ...local, order: merged.length }, merged.length));
+          seen.add(local.id);
+        }
+      }
     }
 
     // Keep any newly created local habits if cloud had none yet

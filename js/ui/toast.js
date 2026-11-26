@@ -60,7 +60,16 @@ export function hideToast({ restoreFocus = false } = {}) {
 
   const el = activeToastEl;
   const wasFocused = el.contains(document.activeElement);
+  const isInlineDialogToast = el.classList.contains('dm-dialog-toast');
   activeToastEl = null;
+
+  if (isInlineDialogToast) {
+    el.remove();
+    if (restoreFocus && wasFocused && lastFocusedBeforeToast && typeof lastFocusedBeforeToast.focus === 'function') {
+      lastFocusedBeforeToast.focus();
+    }
+    return;
+  }
 
   try {
     if (typeof el.hidePopover === 'function') {
@@ -82,8 +91,7 @@ export function hideToast({ restoreFocus = false } = {}) {
 
 /**
  * Displays a non-blocking top-layer toast using popover="manual".
- * Automatically suppresses if a blocking modal dialog is currently open
- * (announces via live region instead so it isn't lost behind inert background).
+ * When a modal <dialog> is open, mounts inside that dialog so notices and Undo remain visible and interactive.
  */
 export function showToast(message, {
   tone = 'info',
@@ -93,15 +101,9 @@ export function showToast(message, {
 } = {}) {
   if (!message) return;
 
-  // Don't surface background toasts while a modal <dialog> is open (inert page)
   const openModal = document.querySelector('dialog:modal');
-  if (openModal && !actionLabel) {
-    announce(message, { urgent: tone === 'error' });
-    return;
-  }
-
   const stack = document.getElementById('toastStack');
-  if (!stack) return;
+  if (!openModal && !stack) return;
 
   if (activeToastEl) {
     hideToast({ restoreFocus: false });
@@ -110,8 +112,10 @@ export function showToast(message, {
   lastFocusedBeforeToast = document.activeElement;
 
   const toast = document.createElement('div');
-  toast.className = 'dm-toast';
-  toast.setAttribute('popover', 'manual');
+  toast.className = openModal ? 'dm-dialog-toast' : 'dm-toast';
+  if (!openModal) {
+    toast.setAttribute('popover', 'manual');
+  }
   toast.dataset.tone = tone;
   toast.id = `dm-toast-${Date.now()}`;
 
@@ -136,8 +140,6 @@ export function showToast(message, {
   closeBtn.type = 'button';
   closeBtn.className = 'icon-btn';
   closeBtn.setAttribute('aria-label', 'Dismiss notification');
-  closeBtn.setAttribute('popovertarget', toast.id);
-  closeBtn.setAttribute('popovertargetaction', 'hide');
   closeBtn.textContent = '✕';
   closeBtn.addEventListener('click', () => hideToast({ restoreFocus: true }));
   toast.appendChild(closeBtn);
@@ -168,17 +170,28 @@ export function showToast(message, {
     if (!toast.contains(document.activeElement)) scheduleHide();
   });
 
-  stack.appendChild(toast);
+  if (openModal) {
+    const footer = openModal.querySelector('.dialog-footer');
+    if (footer && footer.parentNode) footer.parentNode.insertBefore(toast, footer);
+    else openModal.appendChild(toast);
+    openModal.addEventListener('close', () => {
+      if (activeToastEl === toast) hideToast({ restoreFocus: false });
+    }, { once: true });
+  } else {
+    stack.appendChild(toast);
+  }
   activeToastEl = toast;
 
-  try {
-    if (typeof toast.showPopover === 'function') {
-      toast.showPopover();
-    } else {
+  if (!openModal) {
+    try {
+      if (typeof toast.showPopover === 'function') {
+        toast.showPopover();
+      } else {
+        toast.classList.add(':popover-open');
+      }
+    } catch {
       toast.classList.add(':popover-open');
     }
-  } catch {
-    toast.classList.add(':popover-open');
   }
 
   const announcement = actionLabel ? `${message}. Actions available.` : message;

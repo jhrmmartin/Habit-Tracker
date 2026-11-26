@@ -110,7 +110,9 @@ function buildKeepsakeCanvas() {
   const pal = readThemePalette();
   const canvas = document.createElement('canvas');
   const w = 460;
-  const h = 610;
+  const habitCount = Math.max(1, m.topHabits.length);
+  // Dynamic height so there is zero awkward dead whitespace at the bottom
+  const h = 414 + habitCount * 26;
   const dpr = 2;
   canvas.width = w * dpr;
   canvas.height = h * dpr;

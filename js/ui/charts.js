@@ -27,38 +27,61 @@ function readPaletteTokens() {
   };
 }
 
+function setCanvasFallback(container, canvasId, buildContent) {
+  if (!container) return;
+  const canvas = document.getElementById(canvasId);
+  if (canvas) canvas.classList.add('hidden');
+  let box = container.querySelector('.chart-fallback');
+  if (!box) {
+    box = document.createElement('div');
+    box.className = 'chart-fallback';
+    container.appendChild(box);
+  }
+  box.innerHTML = '';
+  buildContent(box);
+}
+
+function clearCanvasFallback(container, canvasId) {
+  if (!container) return;
+  container.querySelector('.chart-fallback')?.remove();
+  const canvas = document.getElementById(canvasId);
+  if (canvas) canvas.classList.remove('hidden');
+}
+
 function renderFallbackDaily(container, analytics) {
-  container.innerHTML = '';
-  const box = document.createElement('div');
-  box.className = 'chart-fallback';
-  const title = document.createElement('strong');
-  title.textContent = `${analytics.totalCompleted} marks completed across ${analytics.totalDays} days (${analytics.overallRate}%)`;
-  const sub = document.createElement('span');
-  sub.textContent = 'Interactive chart resumes automatically when online.';
-  box.append(title, sub);
-  container.appendChild(box);
+  setCanvasFallback(container, 'dailyMixedChart', (box) => {
+    const title = document.createElement('strong');
+    title.textContent = `${analytics.totalCompleted} marks completed across ${analytics.totalDays} days (${analytics.overallRate}%)`;
+    const sub = document.createElement('span');
+    sub.textContent = 'Interactive chart resumes automatically when online.';
+    box.append(title, sub);
+  });
 }
 
 function renderFallbackDonut(container, analytics) {
-  container.innerHTML = '';
-  const box = document.createElement('div');
-  box.className = 'chart-fallback';
-  const big = document.createElement('strong');
-  big.className = 'tabular';
-  big.style.fontSize = '1.75rem';
-  big.style.color = 'var(--accent)';
-  big.textContent = `${analytics.overallRate}%`;
-  const sub = document.createElement('span');
-  sub.textContent = `${analytics.totalCompleted} of ${analytics.totalGoal} scheduled marks`;
-  box.append(big, sub);
-  container.appendChild(box);
+  setCanvasFallback(container, 'overallDoughnutChart', (box) => {
+    const big = document.createElement('strong');
+    big.className = 'tabular';
+    big.style.fontSize = '1.75rem';
+    big.style.color = 'var(--accent)';
+    big.textContent = `${analytics.overallRate}%`;
+    const sub = document.createElement('span');
+    sub.textContent = `${analytics.totalCompleted} of ${analytics.totalGoal} scheduled marks`;
+    box.append(big, sub);
+  });
 }
 
 function ensureCharts() {
   if (typeof window.Chart !== 'function') return false;
   const pal = readPaletteTokens();
+  const dailyPanelVisible = !document.getElementById('chartPanel')?.classList.contains('hidden');
 
-  if (!dailyChart) {
+  clearCanvasFallback(document.getElementById('donutChartBox'), 'overallDoughnutChart');
+  if (dailyPanelVisible) {
+    clearCanvasFallback(document.getElementById('dailyChartBox'), 'dailyMixedChart');
+  }
+
+  if (!dailyChart && dailyPanelVisible) {
     const canvas = document.getElementById('dailyMixedChart');
     if (canvas) {
       dailyChart = new window.Chart(canvas.getContext('2d'), {
@@ -173,7 +196,7 @@ function ensureCharts() {
     }
   }
 
-  return Boolean(dailyChart && rhythmDonut);
+  return Boolean(rhythmDonut);
 }
 
 const INSIGHT_ICONS = {
@@ -216,26 +239,29 @@ export function renderAnalyticsAndCharts() {
   if (hasChartLib) {
     const pal = readPaletteTokens();
 
-    dailyChart.data.labels = Array.from({ length: analytics.totalDays }, (_, i) => String(i + 1));
-    dailyChart.data.datasets[0].data = analytics.checksPerDay;
-    dailyChart.data.datasets[0].backgroundColor = pal.accent;
-    dailyChart.data.datasets[1].data = analytics.moodData;
-    dailyChart.data.datasets[1].borderColor = pal.mood;
-    dailyChart.data.datasets[1].backgroundColor = pal.mood;
-    dailyChart.data.datasets[2].data = analytics.sleepData;
-    dailyChart.data.datasets[2].borderColor = pal.sleep;
-    dailyChart.data.datasets[2].backgroundColor = pal.sleep;
-    dailyChart.options.scales.y.ticks.color = pal.tick;
-    dailyChart.options.scales.y.grid.color = pal.grid;
-    dailyChart.options.scales.y1.ticks.color = pal.mood;
-    dailyChart.options.scales.x.ticks.color = pal.tick;
-    dailyChart.options.plugins.legend.labels.color = pal.legend;
-    dailyChart.update('none');
+    if (dailyChart && !document.getElementById('chartPanel')?.classList.contains('hidden')) {
+      dailyChart.data.labels = Array.from({ length: analytics.totalDays }, (_, i) => String(i + 1));
+      dailyChart.data.datasets[0].data = analytics.checksPerDay;
+      dailyChart.data.datasets[0].backgroundColor = pal.accent;
+      dailyChart.data.datasets[1].data = analytics.moodData;
+      dailyChart.data.datasets[1].borderColor = pal.mood;
+      dailyChart.data.datasets[1].backgroundColor = pal.mood;
+      dailyChart.data.datasets[2].data = analytics.sleepData;
+      dailyChart.data.datasets[2].borderColor = pal.sleep;
+      dailyChart.data.datasets[2].backgroundColor = pal.sleep;
+      dailyChart.options.scales.y.ticks.color = pal.tick;
+      dailyChart.options.scales.y.grid.color = pal.grid;
+      dailyChart.options.scales.y1.ticks.color = pal.mood;
+      dailyChart.options.scales.x.ticks.color = pal.tick;
+      dailyChart.options.plugins.legend.labels.color = pal.legend;
+      dailyChart.update('none');
+    }
 
     rhythmDonut.data.datasets[0].data = analytics.totalGoal > 0
       ? [analytics.totalCompleted, analytics.totalRemaining]
       : [0, 1];
     rhythmDonut.data.datasets[0].backgroundColor = [pal.accent, pal.track];
+    rhythmDonut.options.plugins.tooltip.enabled = analytics.totalGoal > 0;
     rhythmDonut.update('none');
   } else {
     const dailyBox = document.getElementById('dailyChartBox');

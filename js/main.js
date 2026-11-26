@@ -19,7 +19,7 @@ import {
 import { renderTodayView, wireTodayView } from './ui/today.js';
 import { renderMonthlyGrid, wireGridAddForm } from './ui/grid.js';
 import { renderAnalyticsAndCharts } from './ui/charts.js';
-import { renderJournalUI, wireJournalControls } from './ui/journal.js';
+import { renderJournalUI, wireJournalControls, flushPendingJournalSaves } from './ui/journal.js';
 import { wireKeepsakeDialog } from './ui/keepsake.js';
 import { startGuidedTour, openGuideDialog, wireGuidedTour } from './ui/tour.js';
 import { initSync } from './sync.js';
@@ -187,9 +187,11 @@ function wireToolbarAndMenus() {
 
   // Month & Year selectors
   document.getElementById('monthSelect')?.addEventListener('change', (e) => {
+    flushPendingJournalSaves();
     store.setViewedMonth(store.currentYear, Number(e.target.value));
   });
   document.getElementById('yearSelect')?.addEventListener('change', (e) => {
+    flushPendingJournalSaves();
     store.setViewedMonth(Number(e.target.value), store.currentMonth);
   });
 
@@ -333,20 +335,26 @@ function wireKeyboardShortcuts() {
   });
 }
 
-function watchMidnightRollover() {
-  setInterval(() => {
-    const nowKey = todayDateKey();
-    if (nowKey !== lastKnownDateKey) {
-      const wasViewingPrevToday = store.activeTodayKey === lastKnownDateKey;
-      lastKnownDateKey = nowKey;
-      updateMastheadGreeting();
-      if (wasViewingPrevToday) {
-        store.setActiveTodayKey(nowKey);
-      } else {
-        renderActiveViews();
-      }
+function checkDateRollover() {
+  const nowKey = todayDateKey();
+  if (nowKey !== lastKnownDateKey) {
+    const wasViewingPrevToday = store.activeTodayKey === lastKnownDateKey;
+    lastKnownDateKey = nowKey;
+    updateMastheadGreeting();
+    if (wasViewingPrevToday) {
+      store.setActiveTodayKey(nowKey);
+    } else {
+      renderActiveViews();
     }
-  }, 60_000);
+  }
+}
+
+function watchMidnightRollover() {
+  setInterval(checkDateRollover, 60_000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkDateRollover();
+  });
+  window.addEventListener('focus', checkDateRollover);
 }
 
 function registerServiceWorker() {

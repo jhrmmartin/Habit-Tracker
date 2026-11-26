@@ -1,5 +1,5 @@
 // Daymark Service Worker — Offline-First App Shell Cache
-const CACHE_NAME = 'daymark-shell-v3';
+const CACHE_NAME = 'daymark-shell-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -59,7 +59,7 @@ self.addEventListener('fetch', (event) => {
   // Same-origin app shell: stale-while-revalidate for fast loads + offline resilience
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      caches.match(request, { ignoreSearch: request.mode === 'navigate' }).then((cached) => {
         const networkFetch = fetch(request)
           .then((res) => {
             if (res && res.ok && res.type === 'basic') {
@@ -69,7 +69,11 @@ self.addEventListener('fetch', (event) => {
             return res;
           })
           .catch(() => cached);
-        return cached || networkFetch;
+        if (cached) {
+          event.waitUntil(networkFetch);
+          return cached;
+        }
+        return networkFetch;
       })
     );
   }
