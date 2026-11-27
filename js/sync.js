@@ -15,12 +15,31 @@ let realtimeChannel = null;
 let pushTimer = null;
 let pullTimer = null;
 let prefTimer = null;
+let periodicPullTimer = null;
 let isPulling = false;
 let retryCount = 0;
+let pullRetryCount = 0;
 let activeFullSync = null;
 let isAuthFlowRunning = false;
+let prefsNeedPush = false;
+let hasSyncedOnce = false;
+let hasDirtyHabits = false;
+let wellnessSleepMode = 'decimal'; // 'decimal' | 'integer'
+let journalTableState = 'unknown'; // 'unknown' | 'present' | 'missing'
+let journalProbePromise = null;
 const pendingPushMonths = new Set();
 const pendingPrefMonths = new Set();
+
+function isTableMissingError(err) {
+  if (!err) return false;
+  const code = String(err.code || '');
+  const msg = String(err.message || '').toLowerCase();
+  return code === 'PGRST205'
+    || code === '42P01'
+    || err.status === 404
+    || msg.includes('could not find the table')
+    || msg.includes('does not exist');
+}
 
 function getClientStatus() {
   const cfg = window.SUPABASE_CONFIG;
@@ -105,14 +124,41 @@ async function resolveUser(forceFresh = false) {
   try {
     const { data, error } = await c.auth.getSession();
     if (error || !data?.session) {
-      currentUser = null;
+      try {
+        const { data: refData } = await c.auth.refreshSession();
+        currentUser = refData?.session?.user || null;
+      } catch {
+        currentUser = null;
+      }
     } else {
       currentUser = data.session.user || null;
+    }
+    if (forceFresh && currentUser) {
+      try {
+        const { data: userData } = await c.auth.getUser();
+        if (userData?.user) currentUser = userData.user;
+      } catch {
+        // Keep session user cleanly if offline/transient hiccup
+      }
     }
     return currentUser;
   } catch {
     return currentUser;
   }
+}
+
+async function refreshFreshMetadataUser() {
+  const c = getClient();
+  if (!c || !currentUser) return currentUser;
+  try {
+    const { data, error } = await c.auth.getUser();
+    if (!error && data?.user) {
+      currentUser = data.user;
+    }
+  } catch {
+    // Non-fatal: continue with cached metadata
+  }
+  return currentUser;
 }
 
 // ── UI Status Badge ──
@@ -122,15 +168,20 @@ function setSyncStatus(state, detail = '') {
   const btn = document.getElementById('syncNowBtn');
   if (!dot || !text || !btn) return;
 
+  const isConn = state === 'error' && isNetworkError({ message: detail });
   const labels = {
     syncing: 'Syncing…',
     synced: 'Synced',
-    error: 'Retry sync',
+    error: isConn ? 'Connection issue' : 'Retry sync',
     offline: 'Offline'
   };
   dot.className = `sync-dot ${state}`;
   text.textContent = labels[state] || 'Offline';
-  btn.title = detail || (state === 'synced' ? 'Synced across your devices. Click to sync now.' : labels[state]);
+  if (isConn) {
+    btn.title = 'Connection hiccup or blocked by an ad blocker (e.g. Brave Shields). Click to retry sync.';
+  } else {
+    btn.title = detail || (state === 'synced' ? 'Synced across your devices. Click to sync now.' : labels[state]);
+  }
 }
 
 function updateAccountUI(user) {
@@ -265,11 +316,16 @@ async function pushMonth(year, month) {
     }
   }
 
-  const wellRows = Object.values(wellByDate).filter((w) => w.mood !== null || w.sleep_hours !== null);
+  const wellRows = Object.values(wellByDate)
+    .filter((w) => w.mood !== null || w.sleep_hours !== null)
+    .map((w) => (wellnessSleepMode === 'integer' && w.sleep_hours !== null
+      ? { ...w, sleep_hours: Math.round(w.sleep_hours) }
+      : w));
   if (wellRows.length > 0) {
     let { error } = await c.from('wellness_logs').upsert(wellRows, { onConflict: 'user_id,log_date' });
     // Graceful fallback if user's existing Supabase wellness_logs.sleep_hours column is still integer
     if (error && (error.code === '22P02' || String(error.message || '').toLowerCase().includes('invalid input syntax for type integer'))) {
+      wellnessSleepMode = 'integer';
       const roundedRows = wellRows.map((w) => ({
         ...w,
         sleep_hours: w.sleep_hours !== null ? Math.round(w.sleep_hours) : null
@@ -290,24 +346,43 @@ async function pushMonth(year, month) {
     journalRows.push({ user_id: user.id, log_date: logDate, entry_text: text.trim() });
   }
 
-  try {
-    const { data: cloudJ, error: jSelErr } = await c.from('journal_logs')
-      .select('log_date')
-      .eq('user_id', user.id)
-      .gte('log_date', start)
-      .lte('log_date', end);
+  if (journalTableState !== 'missing') {
+    try {
+      const { data: cloudJ, error: jSelErr } = await c.from('journal_logs')
+        .select('log_date')
+        .eq('user_id', user.id)
+        .gte('log_date', start)
+        .lte('log_date', end);
 
-    if (!jSelErr && Array.isArray(cloudJ)) {
-      const clearedDates = cloudJ.filter((j) => !activeJournalDates.has(j.log_date)).map((j) => j.log_date);
-      if (clearedDates.length > 0) {
-        await c.from('journal_logs').delete().eq('user_id', user.id).in('log_date', clearedDates);
+      if (jSelErr) {
+        if (isTableMissingError(jSelErr)) {
+          journalTableState = 'missing';
+          prefsNeedPush = true;
+        }
+      } else {
+        journalTableState = 'present';
+        if (Array.isArray(cloudJ)) {
+          const clearedDates = cloudJ.filter((j) => !activeJournalDates.has(j.log_date)).map((j) => j.log_date);
+          if (clearedDates.length > 0) {
+            await c.from('journal_logs').delete().eq('user_id', user.id).in('log_date', clearedDates);
+          }
+        }
+        if (journalRows.length > 0) {
+          await c.from('journal_logs').upsert(journalRows, { onConflict: 'user_id,log_date' });
+        }
       }
+    } catch {
+      // Graceful degradation if journal_logs table isn't created yet
     }
-    if (journalRows.length > 0) {
-      await c.from('journal_logs').upsert(journalRows, { onConflict: 'user_id,log_date' });
-    }
-  } catch {
-    // Graceful degradation if journal_logs table isn't created yet
+  }
+
+  // Ensure half-hour sleep / fallback journal notes stay synced if needed
+  const hasFracSleep = Object.entries(data.moodSleep || {}).some(
+    ([k, v]) => k.startsWith('Hours of Sleep-') && !Number.isInteger(Number(v))
+  );
+  if (hasFracSleep || journalTableState === 'missing') {
+    pendingPrefMonths.add(`${year}_${month}`);
+    prefsNeedPush = true;
   }
 
   store.markMonthSynced(year, month);
@@ -317,6 +392,7 @@ async function pushPreferences() {
   const c = getClient();
   const user = await resolveUser();
   if (!c || !user) return;
+  prefsNeedPush = false;
 
   // Compact metadata only — never base64 images (keeps JWT headers tiny and safe!)
   const habitExtras = {};
@@ -332,16 +408,46 @@ async function pushPreferences() {
     };
   }
 
-  // Preserve rest-day markers for current month and any recently edited months
+  // Preserve rest-day markers, fractional sleep decimals, and compact fallback notes for edited months
   const monthsToInclude = new Set([`${store.currentYear}_${store.currentMonth}`, ...pendingPrefMonths]);
   pendingPrefMonths.clear();
-  const restUpdates = {};
+  const monthMetaUpdates = {};
   for (const ym of monthsToInclude) {
     const [yStr, mStr] = ym.split('_');
-    const monthData = store.getMonthData(Number(yStr), Number(mStr));
-    restUpdates[`rest_${yStr}_${mStr}`] = Object.entries(monthData.habits || {})
+    const yNum = Number(yStr);
+    const mNum = Number(mStr);
+    const monthData = store.getMonthData(yNum, mNum);
+    monthMetaUpdates[`rest_${yStr}_${mStr}`] = Object.entries(monthData.habits || {})
       .filter(([, v]) => v === 'rest')
       .map(([k]) => k);
+
+    const sleepFrac = {};
+    for (const [k, v] of Object.entries(monthData.moodSleep || {})) {
+      if (!k.startsWith('Hours of Sleep-')) continue;
+      const num = Number(v);
+      const day = k.slice('Hours of Sleep-'.length);
+      if (!Number.isNaN(num) && !Number.isInteger(num)) {
+        sleepFrac[day] = num;
+      }
+    }
+    monthMetaUpdates[`sleepFrac_${yStr}_${mStr}`] = sleepFrac;
+
+    if (journalTableState === 'missing') {
+      // Strictly cap metadata journal fallback (< 2500 chars) so JWT headers stay tiny and reliable
+      const noteMap = {};
+      let usedChars = 0;
+      const days = Object.keys(monthData.journal || {})
+        .map(Number)
+        .filter((d) => !Number.isNaN(d) && monthData.journal[d]?.trim())
+        .sort((a, b) => b - a);
+      for (const d of days) {
+        const snippet = monthData.journal[d].trim().slice(0, 500);
+        if (usedChars + snippet.length > 2400) break;
+        noteMap[String(d)] = snippet;
+        usedChars += snippet.length;
+      }
+      monthMetaUpdates[`journalMeta_${yStr}_${mStr}`] = noteMap;
+    }
   }
 
   try {
@@ -359,7 +465,7 @@ async function pushPreferences() {
         },
         habitIcons,
         habitExtras,
-        ...restUpdates,
+        ...monthMetaUpdates,
         lastSyncedAt: new Date().toISOString()
       }
     });
@@ -372,6 +478,28 @@ async function pushPreferences() {
 }
 
 // ── Pull Helpers ──
+async function ensureJournalTableState(c, user) {
+  if (journalTableState !== 'unknown') return journalTableState;
+  if (!journalProbePromise) {
+    journalProbePromise = (async () => {
+      try {
+        const res = await c.from('journal_logs').select('log_date').eq('user_id', user.id).limit(1);
+        if (res.error && isTableMissingError(res.error)) {
+          journalTableState = 'missing';
+        } else if (!res.error) {
+          journalTableState = 'present';
+        }
+      } catch {
+        // Leave unknown to allow retry if offline
+      } finally {
+        journalProbePromise = null;
+      }
+      return journalTableState;
+    })();
+  }
+  return journalProbePromise;
+}
+
 async function pullHabits() {
   const c = getClient();
   const user = await resolveUser();
@@ -403,18 +531,55 @@ async function pullMonth(year, month) {
 
   let journalLogs = [];
   let journalTableAvailable = false;
-  try {
-    const jRes = await c.from('journal_logs')
-      .select('log_date, entry_text')
-      .eq('user_id', user.id)
-      .gte('log_date', start)
-      .lte('log_date', end);
-    if (!jRes.error && Array.isArray(jRes.data)) {
-      journalLogs = jRes.data;
+  await ensureJournalTableState(c, user);
+  if (journalTableState !== 'missing') {
+    try {
+      const jRes = await c.from('journal_logs')
+        .select('log_date, entry_text')
+        .eq('user_id', user.id)
+        .gte('log_date', start)
+        .lte('log_date', end);
+      if (jRes.error) {
+        if (isTableMissingError(jRes.error)) {
+          journalTableState = 'missing';
+        }
+      } else if (Array.isArray(jRes.data)) {
+        journalTableState = 'present';
+        journalLogs = jRes.data;
+        journalTableAvailable = true;
+      }
+    } catch {
+      // ignore missing optional table
+    }
+  }
+
+  // Fallback journal notes from user_metadata when journal_logs SQL table isn't created yet
+  if (journalTableState === 'missing') {
+    const metaNotes = user.user_metadata?.[`journalMeta_${year}_${month}`];
+    if (metaNotes && typeof metaNotes === 'object') {
+      for (const [dKey, text] of Object.entries(metaNotes)) {
+        const d = Number(dKey);
+        if (d >= 1 && d <= totalDays && typeof text === 'string' && text.trim()) {
+          journalLogs.push({ log_date: formatDateKey(year, month, d), entry_text: text });
+        }
+      }
       journalTableAvailable = true;
     }
-  } catch {
-    // ignore missing optional table
+  }
+
+  // Restore half-hour sleep precision if wellness_logs column rounded integer values
+  const sleepFrac = user.user_metadata?.[`sleepFrac_${year}_${month}`];
+  const wellnessLogs = (wellRes.data || []).map((w) => ({ ...w }));
+  if (sleepFrac && typeof sleepFrac === 'object') {
+    const byDate = new Map(wellnessLogs.map((w) => [w.log_date, w]));
+    for (const [dKey, fracVal] of Object.entries(sleepFrac)) {
+      const d = Number(dKey);
+      if (d < 1 || d > totalDays || Number.isNaN(Number(fracVal))) continue;
+      const dateStr = formatDateKey(year, month, d);
+      const existing = byDate.get(dateStr);
+      if (existing) existing.sleep_hours = Number(fracVal);
+      else wellnessLogs.push({ log_date: dateStr, mood: null, sleep_hours: Number(fracVal) });
+    }
   }
 
   // Restore any rest markers saved in metadata for this month
@@ -431,7 +596,7 @@ async function pullMonth(year, month) {
     }
   }
 
-  return { habitLogs, wellnessLogs: wellRes.data || [], journalLogs, journalTableAvailable };
+  return { habitLogs, wellnessLogs, journalLogs, journalTableAvailable };
 }
 
 function applyCloudMetadataPrefs(meta) {
@@ -442,18 +607,19 @@ function applyCloudMetadataPrefs(meta) {
 }
 
 // ── Orchestration ──
-async function fullSync({ preferCloud = false } = {}) {
+async function fullSync({ preferCloud = false, attempt = 0 } = {}) {
   if (activeFullSync) return activeFullSync;
 
+  setSyncStatus('syncing');
+
   activeFullSync = (async () => {
-    const user = await resolveUser();
-    if (!user) return;
+    const user = await resolveUser(true);
+    if (!user) return false;
     if (!navigator.onLine) {
       setSyncStatus('offline', 'Offline — changes stay saved locally');
-      return;
+      return false;
     }
 
-    setSyncStatus('syncing');
     const y = store.currentYear;
     const m = store.currentMonth;
     const prevY = m === 0 ? y - 1 : y;
@@ -466,7 +632,7 @@ async function fullSync({ preferCloud = false } = {}) {
         pullMonth(prevY, prevM)
       ]);
 
-      const meta = user.user_metadata || {};
+      const meta = (currentUser || user).user_metadata || {};
       applyCloudMetadataPrefs(meta);
 
       if (cloudHabits && cloudHabits.length > 0) {
@@ -480,22 +646,40 @@ async function fullSync({ preferCloud = false } = {}) {
         store.mergeCloudMonth(y, m, cloudMonth, { preferCloud });
       }
 
-      // Push any locally merged offline changes back up cleanly
-      await pushHabits();
-      if (store.dirtyMonths.has(`${prevY}_${prevM}`) || store.dirtyMonths.has(`habitData_${prevY}_${prevM}`)) {
+      const prevDirty = store.dirtyMonths.has(`${prevY}_${prevM}`) || store.dirtyMonths.has(`habitData_${prevY}_${prevM}`);
+      const curDirty = store.dirtyMonths.has(`${y}_${m}`) || store.dirtyMonths.has(`habitData_${y}_${m}`);
+
+      if (!preferCloud || hasDirtyHabits) {
+        await pushHabits();
+        hasDirtyHabits = false;
+      }
+      if (prevDirty) {
         await pushMonth(prevY, prevM);
       }
-      await pushMonth(y, m);
-      await pushPreferences();
+      if (!preferCloud || curDirty) {
+        await pushMonth(y, m);
+      }
+      if (!preferCloud || prefsNeedPush || curDirty) {
+        await pushPreferences();
+      }
+      hasSyncedOnce = true;
       retryCount = 0;
       setSyncStatus('synced');
+      return true;
     } catch (err) {
       console.warn('[Daymark Sync] Full sync issue:', err?.message);
       if (!navigator.onLine) {
         setSyncStatus('offline');
-      } else {
-        setSyncStatus('error', err?.message || 'Sync error — click to retry');
+        return false;
       }
+      if (isNetworkError(err) && attempt < 2) {
+        activeFullSync = null;
+        const delay = (attempt + 1) * 1800;
+        await new Promise((r) => setTimeout(r, delay));
+        return fullSync({ preferCloud, attempt: attempt + 1 });
+      }
+      setSyncStatus('error', err?.message || 'Sync error — click to retry');
+      return false;
     } finally {
       activeFullSync = null;
     }
@@ -519,9 +703,14 @@ function schedulePush(year, month) {
     pendingPushMonths.clear();
     try {
       await pushHabits();
+      hasDirtyHabits = false;
       for (const ym of monthsSnapshot) {
         const [yStr, mStr] = ym.split('_');
         await pushMonth(Number(yStr), Number(mStr));
+      }
+      if (prefsNeedPush) {
+        clearTimeout(prefTimer);
+        await pushPreferences();
       }
       retryCount = 0;
       setSyncStatus('synced');
@@ -540,51 +729,70 @@ function schedulePush(year, month) {
 
 function schedulePrefsPush(year = null, month = null) {
   if (!currentUser) return;
+  prefsNeedPush = true;
   if (year !== null && month !== null) {
     pendingPrefMonths.add(`${year}_${month}`);
   }
   clearTimeout(prefTimer);
   prefTimer = setTimeout(() => {
     if (navigator.onLine) pushPreferences();
-  }, 1500);
+  }, 1200);
 }
 
-function schedulePull() {
+function schedulePull(delayMs = 700) {
   if (!currentUser || isPulling || !navigator.onLine) return;
   clearTimeout(pullTimer);
   pullTimer = setTimeout(async () => {
     if (isPulling || !currentUser) return;
+    if (!navigator.onLine) {
+      setSyncStatus('offline');
+      return;
+    }
     isPulling = true;
     try {
+      await refreshFreshMetadataUser();
       const y = store.currentYear;
       const m = store.currentMonth;
       const [cloudHabits, cloudMonth] = await Promise.all([pullHabits(), pullMonth(y, m)]);
       const meta = currentUser.user_metadata || {};
+      applyCloudMetadataPrefs(meta);
       if (cloudHabits && cloudHabits.length > 0) {
         store.mergeCloudHabits(cloudHabits, meta.habitIcons || {}, meta.habitExtras || {}, { preferCloud: true });
       }
       if (cloudMonth) {
         store.mergeCloudMonth(y, m, cloudMonth, { preferCloud: true });
       }
+      pullRetryCount = 0;
       setSyncStatus('synced');
     } catch (err) {
-      setSyncStatus('error', err?.message || 'Pull failed');
+      if (!navigator.onLine) {
+        setSyncStatus('offline');
+      } else if (isNetworkError(err) && pullRetryCount < 2) {
+        pullRetryCount++;
+        isPulling = false;
+        schedulePull(pullRetryCount * 2000);
+        return;
+      } else {
+        setSyncStatus('error', err?.message || 'Pull failed');
+      }
     } finally {
       isPulling = false;
     }
-  }, 700);
+  }, delayMs);
 }
 
 function subscribeRealtime(user) {
   const c = getClient();
   if (!c || !user || realtimeChannel) return;
   try {
-    realtimeChannel = c.channel(`daymark-live-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'habits', filter: `user_id=eq.${user.id}` }, schedulePull)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_logs', filter: `user_id=eq.${user.id}` }, schedulePull)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'wellness_logs', filter: `user_id=eq.${user.id}` }, schedulePull)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'journal_logs', filter: `user_id=eq.${user.id}` }, schedulePull)
-      .subscribe();
+    let ch = c.channel(`daymark-live-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'habits', filter: `user_id=eq.${user.id}` }, () => schedulePull(500))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_logs', filter: `user_id=eq.${user.id}` }, () => schedulePull(500))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wellness_logs', filter: `user_id=eq.${user.id}` }, () => schedulePull(500));
+    if (journalTableState !== 'missing') {
+      ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: 'journal_logs', filter: `user_id=eq.${user.id}` }, () => schedulePull(500));
+    }
+    realtimeChannel = ch.subscribe();
   } catch (err) {
     console.warn('[Daymark Sync] Realtime unavailable, using focus sync:', err?.message);
   }
@@ -613,9 +821,12 @@ export async function manualSyncNow() {
     openAuthDialog('signin');
     return;
   }
-  await fullSync({ preferCloud: false });
-  await pushPreferences();
-  toast.success('Synced across devices');
+  const ok = await fullSync({ preferCloud: hasSyncedOnce && !hasDirtyHabits });
+  if (ok) {
+    toast.success('Synced across devices');
+  } else {
+    toast.error('Could not reach cloud sync right now. Check your connection or ad blocker and tap to retry.');
+  }
 }
 
 // ── Auth Dialog (Sign In / Sign Up / Forgot Password / Recovery) ──
@@ -847,9 +1058,13 @@ export async function handleSignOut() {
   setSyncStatus('offline');
 
   if (choice === 'clear') {
+    hasSyncedOnce = false;
+    hasDirtyHabits = false;
     store.clearAllLocalData();
     toast.info('Signed out and cleared local data on this device.');
   } else {
+    hasSyncedOnce = false;
+    hasDirtyHabits = false;
     toast.info('Signed out. Your local copy remains saved on this device.');
   }
 }
@@ -891,6 +1106,7 @@ export async function initSync() {
         schedulePrefsPush(detail.year, detail.month);
       }
     } else if (type === 'habits-changed' && !detail.fromCloud) {
+      hasDirtyHabits = true;
       schedulePush(store.currentYear, store.currentMonth);
       schedulePrefsPush();
     } else if (type === 'prefs-changed' && detail.triggerSync) {
@@ -914,16 +1130,28 @@ export async function initSync() {
     }
   });
 
-  // Auto-resume on focus / reconnect
+  // Auto-resume on focus / reconnect + periodic cross-device check while tab is visible
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && currentUser) schedulePull();
+    if (document.visibilityState === 'visible' && currentUser) {
+      schedulePull(900);
+    }
   });
   window.addEventListener('online', () => {
-    if (currentUser) fullSync({ preferCloud: false });
+    if (currentUser) {
+      setTimeout(() => fullSync({ preferCloud: false }), 1200);
+    }
   });
   window.addEventListener('offline', () => {
     if (currentUser) setSyncStatus('offline');
   });
+
+  if (!periodicPullTimer) {
+    periodicPullTimer = setInterval(() => {
+      if (currentUser && document.visibilityState === 'visible' && navigator.onLine && !isPulling && pendingPushMonths.size === 0) {
+        schedulePull(300);
+      }
+    }, 45_000);
+  }
 
   // Restore existing Supabase session silently
   const c = getClient();
