@@ -17,6 +17,7 @@ let pullTimer = null;
 let prefTimer = null;
 let periodicPullTimer = null;
 let isPulling = false;
+let isPushing = false;
 let retryCount = 0;
 let pullRetryCount = 0;
 let activeFullSync = null;
@@ -27,6 +28,9 @@ let hasDirtyHabits = false;
 let wellnessSleepMode = 'decimal'; // 'decimal' | 'integer'
 let journalTableState = 'unknown'; // 'unknown' | 'present' | 'missing'
 let journalProbePromise = null;
+let lastSyncError = null;
+let lastSyncStage = '';
+let lastDiagnosis = '';
 const pendingPushMonths = new Set();
 const pendingPrefMonths = new Set();
 
@@ -161,12 +165,113 @@ async function refreshFreshMetadataUser() {
   return currentUser;
 }
 
+async function scrubLegacyMetadataIfNeeded(c, session) {
+  const meta = session?.user?.user_metadata;
+  if (!c || !meta || typeof meta !== 'object') return false;
+
+  const cleanup = {};
+  let needsScrub = false;
+
+  // Legacy app stored huge Notion cover photos / journals inside JWT user_metadata
+  for (const key of Object.keys(meta)) {
+    if (meta[key] === null || meta[key] === undefined) continue;
+    const isLegacyKey = key === 'notionWorkspace' || key === 'theme' || /^journal_\d{4}_\d{1,2}$/.test(key);
+    if (isLegacyKey) {
+      cleanup[key] = null;
+      needsScrub = true;
+    }
+  }
+
+  // Strip any oversized base64 data URLs accidentally stored in habitIcons
+  if (meta.habitIcons && typeof meta.habitIcons === 'object') {
+    const cleanedIcons = {};
+    let iconDirty = false;
+    for (const [k, v] of Object.entries(meta.habitIcons)) {
+      if (typeof v === 'string' && v.length > 24) {
+        iconDirty = true;
+      } else {
+        cleanedIcons[k] = v;
+      }
+    }
+    if (iconDirty) {
+      cleanup.habitIcons = cleanedIcons;
+      needsScrub = true;
+    }
+  }
+
+  if (!needsScrub) return false;
+
+  try {
+    const { data, error } = await c.auth.updateUser({ data: cleanup });
+    if (!error && data?.user) {
+      currentUser = data.user;
+      await c.auth.refreshSession();
+      return true;
+    }
+  } catch (err) {
+    console.warn('[Daymark Sync] Legacy metadata cleanup skipped:', err?.message);
+  }
+  return false;
+}
+
+async function diagnoseSyncFailure(err) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return 'You appear to be offline — check Wi-Fi or mobile data.';
+  }
+  const c = getClient();
+  const cfg = window.SUPABASE_CONFIG;
+  let jwtLen = 0;
+  let hasNotionBloat = false;
+  try {
+    const { data } = await c.auth.getSession();
+    jwtLen = data?.session?.access_token?.length || 0;
+    hasNotionBloat = Boolean(data?.session?.user?.user_metadata?.notionWorkspace);
+  } catch { /* ignore */ }
+
+  let anonReachable = null;
+  if (cfg?.url && cfg?.anonKey) {
+    try {
+      const res = await fetch(`${cfg.url}/rest/v1/`, {
+        headers: {
+          apikey: cfg.anonKey,
+          Authorization: `Bearer ${cfg.anonKey}`
+        }
+      });
+      anonReachable = res.status > 0 && res.status < 500;
+    } catch {
+      anonReachable = false;
+    }
+  }
+
+  if (anonReachable === false) {
+    const host = getConfiguredHost() || 'supabase.co';
+    return `Browser cannot reach ${host} (${lastSyncStage || 'sync'}). Disable Brave Shields / ad blockers or check VPN/DNS.`;
+  }
+  if (anonReachable === true && (jwtLen > 12000 || hasNotionBloat)) {
+    const kb = Math.max(1, Math.round(jwtLen / 1024));
+    console.warn(
+      '[Daymark Sync] Oversized JWT detected (' + kb + ' KB). Run in Supabase SQL Editor:\n' +
+      "update auth.users set raw_user_meta_data = raw_user_meta_data - 'notionWorkspace' - 'habitIcons' where email = '<your-email>';"
+    );
+    return `Account session header is too large (${kb} KB from old Notion cover/icon data). Run the SQL cleanup in Supabase or sign in with a fresh account.`;
+  }
+  if (err?.message) {
+    return `Sync error (${lastSyncStage || 'request'}): ${err.message}`;
+  }
+  return 'Sync failed — tap to retry.';
+}
+
 // ── UI Status Badge ──
 function setSyncStatus(state, detail = '') {
   const dot = document.getElementById('syncDot');
   const text = document.getElementById('syncStatusText');
   const btn = document.getElementById('syncNowBtn');
   if (!dot || !text || !btn) return;
+
+  if (state === 'synced') {
+    lastSyncError = null;
+    lastDiagnosis = '';
+  }
 
   const isConn = state === 'error' && isNetworkError({ message: detail });
   const labels = {
@@ -177,8 +282,10 @@ function setSyncStatus(state, detail = '') {
   };
   dot.className = `sync-dot ${state}`;
   text.textContent = labels[state] || 'Offline';
-  if (isConn) {
-    btn.title = 'Connection hiccup or blocked by an ad blocker (e.g. Brave Shields). Click to retry sync.';
+  if (state === 'error' && lastDiagnosis) {
+    btn.title = lastDiagnosis;
+  } else if (isConn) {
+    btn.title = `${detail || 'Failed to fetch'} (${lastSyncStage || 'sync'}). Click to diagnose & retry.`;
   } else {
     btn.title = detail || (state === 'synced' ? 'Synced across your devices. Click to sync now.' : labels[state]);
   }
@@ -626,11 +733,20 @@ async function fullSync({ preferCloud = false, attempt = 0 } = {}) {
     const prevM = m === 0 ? 11 : m - 1;
 
     try {
-      const [cloudHabits, cloudMonth, cloudPrevMonth] = await Promise.all([
-        pullHabits(),
-        pullMonth(y, m),
-        pullMonth(prevY, prevM)
-      ]);
+      const c = getClient();
+      if (c) {
+        const { data: sessData } = await c.auth.getSession();
+        if (sessData?.session) {
+          await scrubLegacyMetadataIfNeeded(c, sessData.session);
+        }
+      }
+
+      lastSyncStage = 'pullHabits';
+      const cloudHabits = await pullHabits();
+      lastSyncStage = 'pullMonth';
+      const cloudMonth = await pullMonth(y, m);
+      lastSyncStage = 'pullPrevMonth';
+      const cloudPrevMonth = await pullMonth(prevY, prevM);
 
       const meta = (currentUser || user).user_metadata || {};
       applyCloudMetadataPrefs(meta);
@@ -650,16 +766,20 @@ async function fullSync({ preferCloud = false, attempt = 0 } = {}) {
       const curDirty = store.dirtyMonths.has(`${y}_${m}`) || store.dirtyMonths.has(`habitData_${y}_${m}`);
 
       if (!preferCloud || hasDirtyHabits) {
+        lastSyncStage = 'pushHabits';
         await pushHabits();
         hasDirtyHabits = false;
       }
       if (prevDirty) {
+        lastSyncStage = 'pushPrevMonth';
         await pushMonth(prevY, prevM);
       }
       if (!preferCloud || curDirty) {
+        lastSyncStage = 'pushMonth';
         await pushMonth(y, m);
       }
       if (!preferCloud || prefsNeedPush || curDirty) {
+        lastSyncStage = 'pushPreferences';
         await pushPreferences();
       }
       hasSyncedOnce = true;
@@ -667,7 +787,8 @@ async function fullSync({ preferCloud = false, attempt = 0 } = {}) {
       setSyncStatus('synced');
       return true;
     } catch (err) {
-      console.warn('[Daymark Sync] Full sync issue:', err?.message);
+      lastSyncError = err;
+      console.warn('[Daymark Sync] Full sync issue at', lastSyncStage + ':', err?.message);
       if (!navigator.onLine) {
         setSyncStatus('offline');
         return false;
@@ -678,6 +799,7 @@ async function fullSync({ preferCloud = false, attempt = 0 } = {}) {
         await new Promise((r) => setTimeout(r, delay));
         return fullSync({ preferCloud, attempt: attempt + 1 });
       }
+      lastDiagnosis = await diagnoseSyncFailure(err);
       setSyncStatus('error', err?.message || 'Sync error — click to retry');
       return false;
     } finally {
@@ -688,17 +810,29 @@ async function fullSync({ preferCloud = false, attempt = 0 } = {}) {
   return activeFullSync;
 }
 
+function hasQueuedPush() {
+  return isPushing
+    || pushTimer !== null
+    || prefTimer !== null
+    || hasDirtyHabits
+    || pendingPushMonths.size > 0
+    || prefsNeedPush;
+}
+
 function schedulePush(year, month) {
   if (!currentUser) return;
   pendingPushMonths.add(`${year}_${month}`);
   clearTimeout(pushTimer);
+  clearTimeout(pullTimer);
   setSyncStatus('syncing');
 
   pushTimer = setTimeout(async () => {
+    pushTimer = null;
     if (!navigator.onLine) {
       setSyncStatus('offline');
       return;
     }
+    isPushing = true;
     const monthsSnapshot = Array.from(pendingPushMonths);
     pendingPushMonths.clear();
     try {
@@ -710,6 +844,7 @@ function schedulePush(year, month) {
       }
       if (prefsNeedPush) {
         clearTimeout(prefTimer);
+        prefTimer = null;
         await pushPreferences();
       }
       retryCount = 0;
@@ -723,6 +858,8 @@ function schedulePush(year, month) {
         return;
       }
       setSyncStatus('error', err?.message || 'Sync error — click to retry');
+    } finally {
+      isPushing = false;
     }
   }, 800);
 }
@@ -735,15 +872,25 @@ function schedulePrefsPush(year = null, month = null) {
   }
   clearTimeout(prefTimer);
   prefTimer = setTimeout(() => {
+    prefTimer = null;
     if (navigator.onLine) pushPreferences();
   }, 1200);
 }
 
 function schedulePull(delayMs = 700) {
   if (!currentUser || isPulling || !navigator.onLine) return;
+  if (hasQueuedPush()) {
+    clearTimeout(pullTimer);
+    pullTimer = setTimeout(() => schedulePull(delayMs), 1200);
+    return;
+  }
   clearTimeout(pullTimer);
   pullTimer = setTimeout(async () => {
     if (isPulling || !currentUser) return;
+    if (hasQueuedPush()) {
+      schedulePull(1200);
+      return;
+    }
     if (!navigator.onLine) {
       setSyncStatus('offline');
       return;
@@ -754,6 +901,7 @@ function schedulePull(delayMs = 700) {
       const y = store.currentYear;
       const m = store.currentMonth;
       const [cloudHabits, cloudMonth] = await Promise.all([pullHabits(), pullMonth(y, m)]);
+      if (hasQueuedPush()) return;
       const meta = currentUser.user_metadata || {};
       applyCloudMetadataPrefs(meta);
       if (cloudHabits && cloudHabits.length > 0) {
@@ -763,7 +911,7 @@ function schedulePull(delayMs = 700) {
         store.mergeCloudMonth(y, m, cloudMonth, { preferCloud: true });
       }
       pullRetryCount = 0;
-      setSyncStatus('synced');
+      if (!hasQueuedPush()) setSyncStatus('synced');
     } catch (err) {
       if (!navigator.onLine) {
         setSyncStatus('offline');
@@ -816,8 +964,10 @@ export async function manualSyncNow() {
     toast.info('You are offline — changes stay safe locally and will sync when you reconnect.');
     return;
   }
+  if (currentUser) setSyncStatus('syncing');
   const user = await resolveUser(true);
   if (!user) {
+    setSyncStatus('offline');
     openAuthDialog('signin');
     return;
   }
@@ -825,7 +975,8 @@ export async function manualSyncNow() {
   if (ok) {
     toast.success('Synced across devices');
   } else {
-    toast.error('Could not reach cloud sync right now. Check your connection or ad blocker and tap to retry.');
+    const msg = lastDiagnosis || await diagnoseSyncFailure(lastSyncError);
+    toast.error(msg, { duration: 9000 });
   }
 }
 
@@ -1024,9 +1175,15 @@ async function handleAuthSubmit(e) {
       currentUser = data.user;
       updateAccountUI(currentUser);
       document.getElementById('authDialog')?.close('signed-in');
-      await fullSync({ preferCloud: false });
+      const syncOk = await fullSync({ preferCloud: false });
       subscribeRealtime(currentUser);
-      toast.success(`Signed in as ${currentUser.email}`);
+      if (syncOk) {
+        toast.success(`Signed in as ${currentUser.email}`);
+      } else if (lastDiagnosis) {
+        toast.error(lastDiagnosis, { duration: 9000 });
+      } else {
+        toast.info(`Signed in as ${currentUser.email} — tap Retry sync to reconnect.`);
+      }
     }
   } catch (err) {
     if (errEl) errEl.textContent = formatAuthError(err);
