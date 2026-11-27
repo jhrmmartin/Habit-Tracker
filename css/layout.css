@@ -25,7 +25,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .brand-lockup {
@@ -33,6 +33,7 @@
     align-items: center;
     gap: 10px;
     min-inline-size: 0;
+    flex-shrink: 0;
   }
 
   .brand-stamp {
@@ -69,22 +70,23 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     margin-inline-start: auto;
+    min-inline-size: 0;
   }
 
   .topbar-nav-group {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .topbar-actions-group {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   /* ── Main Workspace Shell ── */
@@ -214,6 +216,22 @@
     }
   }
 
+  @media (max-width: 1240px) {
+    .brand-tagline {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1080px) {
+    .topbar-inner {
+      flex-wrap: wrap;
+    }
+
+    .topbar-controls {
+      flex-wrap: wrap;
+    }
+  }
+
   @media (max-width: 680px) {
     .app-topbar {
       position: relative;
@@ -222,10 +240,27 @@
     .topbar-inner {
       gap: 8px;
       padding-block: 8px;
+      flex-wrap: wrap;
     }
 
-    .brand-tagline {
+    .brand-tagline,
+    .user-email-text,
+    .user-avatar {
       display: none;
+    }
+
+    .brand-stamp {
+      width: 28px;
+      height: 28px;
+    }
+
+    .brand-name {
+      font-size: 1.08rem;
+    }
+
+    .account-pill {
+      padding: 2px 4px;
+      gap: 4px;
     }
 
     .topbar-controls {
@@ -236,6 +271,7 @@
       order: 2;
       margin-inline-start: auto;
       gap: 4px;
+      flex-wrap: nowrap;
     }
 
     .topbar-nav-group {
